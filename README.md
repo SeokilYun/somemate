@@ -16,14 +16,14 @@ Next.js 프로젝트 하나(App Router)에서 클라이언트와 서버(API Rout
 **서버 (API Routes)**
 - NextAuth (Credentials Provider)
 - Prisma + MySQL
-- Anthropic API (이미지 분석 및 캐릭터 응답 생성, 서버에서만 호출)
+- 비전(vision) 지원 LLM API (이미지 분석 및 캐릭터 응답 생성, 제공사 미정, 서버에서만 호출)
 - Web Push (VAPID) 발송
 
 ## 사전 준비물
 
 - Node.js 20 LTS 이상
 - MySQL (로컬은 Docker 권장)
-- Anthropic API 키
+- 비전 지원 LLM API 키 (제공사 미정)
 - VAPID 키 쌍 (Web Push 발송용)
 
 ## 시작하기
@@ -44,7 +44,7 @@ npm run dev
 | --- | --- |
 | `DATABASE_URL` | Prisma용 MySQL 접속 문자열 (예: `mysql://user:password@localhost:3306/somemate`) |
 | `NEXTAUTH_SECRET` | NextAuth 세션 암호화 시크릿 |
-| `ANTHROPIC_API_KEY` | 이미지 분석 및 캐릭터 응답 생성에 사용 (서버 전용, 클라이언트 노출 금지) |
+| `LLM_API_KEY` | 이미지 분석 및 캐릭터 응답 생성에 사용하는 비전 지원 LLM API 키 (제공사 미정, 서버 전용, 클라이언트 노출 금지) |
 | `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` | Web Push 발송용 키 쌍 |
 | `CRON_SECRET` | 후속 알림 발송 내부 엔드포인트(`/api/cron/followups`) 인증용 |
 

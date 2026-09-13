@@ -51,7 +51,7 @@ Next.js 프로젝트 하나 안에서 App Router가 클라이언트와 서버(AP
 - 인증: NextAuth Credentials Provider + bcrypt 해시, JWT 세션
 - DB: MySQL + Prisma (로컬은 Docker Compose로 MySQL 컨테이너 실행)
 - 이미지 저장: 로컬 `uploads/` (또는 `public/uploads`), 사용자 ID로 경로 격리, 소유자 검증 후 서빙
-- 이미지 분석 & 캐릭터 응답: Anthropic API (vision 지원 모델) 호출 — API 키는 서버 환경 변수에서만 사용
+- 이미지 분석 & 캐릭터 응답: 비전(vision) 지원 LLM API 호출 (제공사 미정) — API 키는 서버 환경 변수에서만 사용
 - 푸시: Web Push (VAPID) — 구독 정보 DB 저장, `web-push` 라이브러리로 발송, `/api/cron/followups`로 24시간 후속 알림 트리거
 
 ## 데이터 모델 (Prisma 개요)
@@ -107,14 +107,14 @@ Next.js 프로젝트 하나 안에서 App Router가 클라이언트와 서버(AP
 
 ## 보안/데이터 규칙
 
-- Anthropic API 키 등 비밀 정보는 서버(환경 변수)에서만 사용, 클라이언트 노출 금지.
+- LLM API 키 등 비밀 정보는 서버(환경 변수)에서만 사용, 클라이언트 노출 금지.
 - 모든 API 라우트는 세션의 userId로 소유권 검증 후 데이터 반환.
 - 업로드 이미지는 소유자만 접근 가능한 경로/서명으로 서빙.
 
 ## 구현 범위 구분
 
-- **실제 동작**: 이메일/비밀번호 인증, 상담방/메시지 영속 저장(새로고침·재로그인 유지), 이미지 업로드+Anthropic vision 분석, 캐릭터 3인 응답, Web Push(화면 닫아도 수신).
-- **환경 설정 필요**: `ANTHROPIC_API_KEY`, VAPID 키 쌍(`VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`), 알림 발송 스케줄 실행 방식(로컬은 cron/서버 프로세스로 24h 지연 작업 처리 — 배포 환경에 맞는 스케줄러 확인 필요).
+- **실제 동작**: 이메일/비밀번호 인증, 상담방/메시지 영속 저장(새로고침·재로그인 유지), 이미지 업로드+LLM 비전 분석, 캐릭터 3인 응답, Web Push(화면 닫아도 수신).
+- **환경 설정 필요**: `LLM_API_KEY`(제공사 선정 필요), VAPID 키 쌍(`VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`), 알림 발송 스케줄 실행 방식(로컬은 cron/서버 프로세스로 24h 지연 작업 처리 — 배포 환경에 맞는 스케줄러 확인 필요).
 - **데모 표시 필요**: 위 설정 없이 목업 데이터로 대체하는 화면이 있다면 화면 내 "데모" 배지로 명시하고, 타이머 기반 화면 내 알림을 실제 푸시로 오인시키지 않을 것.
 
 ## API 스펙
