@@ -52,7 +52,7 @@ Next.js 프로젝트 하나 안에서 App Router가 클라이언트와 서버(AP
 - DB: MySQL + Prisma (로컬은 Docker Compose로 MySQL 컨테이너 실행)
 - 이미지 저장: 로컬 `uploads/` (또는 `public/uploads`), 사용자 ID로 경로 격리, 소유자 검증 후 서빙
 - 이미지 분석 & 캐릭터 응답: 비전(vision) 지원 LLM API 호출 (제공사 미정) — API 키는 서버 환경 변수에서만 사용
-- 푸시: Web Push (VAPID) — 구독 정보 DB 저장, `web-push` 라이브러리로 발송, `/api/cron/followups`로 24시간 후속 알림 트리거
+- 푸시: Web Push (VAPID) — 구독 정보 DB 저장, `web-push` 라이브러리로 발송, `/api/internal/followups/dispatch`로 24시간 후속 알림 트리거
 
 ## 데이터 모델 (Prisma 개요)
 

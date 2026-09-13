@@ -46,7 +46,7 @@ npm run dev
 | `NEXTAUTH_SECRET` | NextAuth 세션 암호화 시크릿 |
 | `LLM_API_KEY` | 이미지 분석 및 캐릭터 응답 생성에 사용하는 비전 지원 LLM API 키 (제공사 미정, 서버 전용, 클라이언트 노출 금지) |
 | `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` | Web Push 발송용 키 쌍 |
-| `CRON_SECRET` | 후속 알림 발송 내부 엔드포인트(`/api/cron/followups`) 인증용 |
+| `CRON_SECRET` | 후속 알림 발송 내부 엔드포인트(`/api/internal/followups/dispatch`) 인증용 |
 
 ## 문서
 

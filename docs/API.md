@@ -2,21 +2,23 @@
 
 기본 규칙:
 - 모든 응답은 JSON. 에러는 `{ "error": { "code": string, "message": string } }` 형식, HTTP 상태코드 병행.
-- `/api/register`, `/api/auth/*` 를 제외한 모든 엔드포인트는 세션 필요 → 미인증 시 `401 UNAUTHENTICATED`.
-- 소유권 검증: `Partner`/`Conversation`/`Message`/업로드 파일은 요청자의 `userId`와 일치할 때만 조회·수정 가능 → 불일치 시 `404 NOT_FOUND`(존재 자체를 노출하지 않음).
+- `POST /api/users`(회원가입), `/api/auth/*` 를 제외한 모든 엔드포인트는 세션 필요 → 미인증 시 `401 UNAUTHENTICATED`.
+- 소유권 검증: `Partner`/`Conversation`/`Message`/이미지 리소스는 요청자의 `userId`와 일치할 때만 조회·수정 가능 → 불일치 시 `404 NOT_FOUND`(존재 자체를 노출하지 않음).
+- 이미지 분석 및 캐릭터 응답 생성은 비전 지원 LLM API를 사용(제공사 미정). 어떤 제공사를 쓰든 서버에서만 키를 사용하고, 아래 스펙(요청/응답 형식)은 동일하게 유지한다.
 - Message `role`: `user | optimistic | cautious | realistic | system`
+- 리소스 컬렉션은 복수형 명사, 하위 리소스는 `/부모컬렉션/:id/자식컬렉션` 형태로 중첩한다.
 
 ## 1. 인증
 
-### POST /api/register
-회원가입.
+### POST /api/users
+회원가입(사용자 리소스 생성).
 - Request: `{ "email": string, "password": string }`
 - 201: `{ "id": string, "email": string }`
 - 400 `VALIDATION_ERROR`: 이메일 형식/비밀번호 길이 미달
 - 409 `EMAIL_TAKEN`: 이메일 중복
 
 ### /api/auth/[...nextauth]
-NextAuth Credentials Provider가 처리.
+NextAuth Credentials Provider가 처리(프레임워크 표준 경로, REST 리소스 규칙 예외).
 - 로그인: NextAuth `signIn("credentials", { email, password })` → 실패 시 `CredentialsSignin` 에러를 클라이언트에서 매핑해 "이메일 또는 비밀번호가 올바르지 않습니다" 표시.
 - 로그아웃: `signOut()`
 - 세션 조회: `GET /api/auth/session` → `{ user: { id, email } } | {}`
@@ -98,7 +100,7 @@ Request: 위 필드 중 일부(부분 업데이트)
 
 ### POST /api/conversations/:id/messages
 텍스트/이미지 전송 → 사용자 메시지 저장 후, 이미지가 있으면 3캐릭터 분석을 동기 처리해 함께 반환. 클라이언트는 응답 대기 중 "분석 중" 상태를 표시.
-- Request: `{ "text": "string | null", "imageUrl": "string | null" }` (`text`, `imageUrl` 중 최소 하나 필수)
+- Request: `{ "text": "string | null", "imageUrl": "string | null" }` (`text`, `imageUrl` 중 최소 하나 필수, `imageUrl`은 `POST /api/images` 응답값 사용)
 - 201 (정상 분석):
 ```json
 {
@@ -129,41 +131,41 @@ Request: 위 필드 중 일부(부분 업데이트)
 페이지네이션이 필요할 경우의 메시지 목록 조회(기본은 `GET /api/conversations/:id`로 충분).
 - 200: `{ "messages": [...], "nextCursor": "string | null" }`
 
-## 5. 이미지 업로드
+## 5. 이미지 (Image)
 
-### POST /api/uploads
+### POST /api/images
 `multipart/form-data`, field 이름 `image`. 단일 이미지, 서버에서 `userId/uuid.ext` 경로로 저장.
-- 201: `{ "imageUrl": "/api/uploads/{fileId}" }`
+- 201: `{ "id": "string", "imageUrl": "/api/images/{id}" }`
 - 400 `VALIDATION_ERROR`: 파일 없음/이미지 아님/용량 초과(예: 10MB 제한)
 
-### GET /api/uploads/:fileId
-파일 소유자 세션만 접근 허용.
+### GET /api/images/:imageId
+이미지 소유자 세션만 접근 허용.
 - 200: 이미지 바이너리
 - 404: 본인 소유 아님/존재하지 않음
 
 ## 6. 후속 알림 (Web Push)
 
-### POST /api/push/subscribe
-브라우저 Push 구독 정보를 사용자 계정에 저장(upsert).
+### POST /api/push-subscriptions
+브라우저 Push 구독 정보를 사용자 계정에 리소스로 저장.
 - Request: `{ "endpoint": "string", "keys": { "p256dh": "string", "auth": "string" } }`
-- 201: `{}`
+- 201: `{ "id": "string" }`
 
-### DELETE /api/push/subscribe
-- Request: `{ "endpoint": "string" }`
+### DELETE /api/push-subscriptions/:subscriptionId
 - 200: `{}`
+- 404: 본인 소유 아님/존재하지 않음
 
 ### POST /api/conversations/:id/followup
 "내일 이 이야기 다시 나눠볼까?" 알림 신청. `followupScheduledAt = now + 24h` 설정.
 - 200: `{ "followupScheduledAt": "string(ISO)" }`
 - 404: 본인 상담방 아님
-- 409 `NO_SUBSCRIPTION`: 저장된 Push 구독이 없음(클라이언트에서 먼저 권한 요청 + `/api/push/subscribe` 호출 필요)
+- 409 `NO_SUBSCRIPTION`: 저장된 Push 구독이 없음(클라이언트에서 먼저 권한 요청 + `POST /api/push-subscriptions` 호출 필요)
 
 ### DELETE /api/conversations/:id/followup
 알림 예약 취소(사용자 직접 취소, 또는 사용자가 먼저 후속 대화를 시작했을 때 서버가 자동 호출).
 - 200: `{}`
 
-### POST /api/cron/followups (내부 전용)
-예약 시각이 지난 미발송 알림을 일괄 발송. 외부에서 호출 불가하도록 `Authorization: Bearer {CRON_SECRET}` 헤더 필수.
+### POST /api/internal/followups/dispatch (내부 전용)
+예약 시각이 지난 미발송 알림을 일괄 발송. 공개 API가 아니며 외부에서 호출 불가하도록 `Authorization: Bearer {CRON_SECRET}` 헤더 필수(스케줄러/크론에서만 호출).
 - 200: `{ "sent": number }`
 - 401: 시크릿 불일치
 - 동작: `followupScheduledAt <= now && followupSentAt IS NULL` 인 Conversation을 조회 → 해당 유저의 모든 PushSubscription에 `"그 이야기, 어떻게 됐어? 이어서 이야기해볼까?"` 발송 → `followupSentAt = now` 기록. 클릭 시 이동 URL은 `/conversations/{id}`.
