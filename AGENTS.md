@@ -37,13 +37,22 @@ A는 화면 구현과 사용자 테스트까지 맡아야 세 역할의 작업�
 
 ## 기술 스택
 
-- Next.js (App Router) + TypeScript
-- DB: SQLite + Prisma (로컬/단일 인스턴스 배포 기준, 추후 Postgres 전환 용이)
-- 인증: 이메일/비밀번호, NextAuth Credentials Provider + bcrypt 해시, JWT 세션
-- 이미지 저장: 로컬 `uploads/` (또는 `public/uploads`), 사용자 ID로 경로 격리
-- 이미지 분석 & 캐릭터 응답: Anthropic API (vision 지원 모델), 서버 라우트에서만 호출
-- 푸시: Web Push (VAPID) + Service Worker, 구독 정보 DB 저장, 서버에서 `web-push`로 발송
-- 스타일: Tailwind CSS
+Next.js 프로젝트 하나 안에서 App Router가 클라이언트와 서버(API Routes)를 함께 구성한다. 별도 리포/배포 단위가 아니라 실행 위치 기준의 구분이다.
+
+### 클라이언트 (App)
+
+- Next.js (App Router) + TypeScript, React Server/Client Components
+- Tailwind CSS
+- Service Worker: Web Push 구독 등록/수신
+- 화면: 로그인·회원가입, 메인(상담 카드 + Partner 입력), 친구 초대, 채팅방
+
+### 서버 (API Routes / 서버 컴포넌트)
+
+- 인증: NextAuth Credentials Provider + bcrypt 해시, JWT 세션
+- DB: MySQL + Prisma (로컬은 Docker Compose로 MySQL 컨테이너 실행)
+- 이미지 저장: 로컬 `uploads/` (또는 `public/uploads`), 사용자 ID로 경로 격리, 소유자 검증 후 서빙
+- 이미지 분석 & 캐릭터 응답: Anthropic API (vision 지원 모델) 호출 — API 키는 서버 환경 변수에서만 사용
+- 푸시: Web Push (VAPID) — 구독 정보 DB 저장, `web-push` 라이브러리로 발송, `/api/cron/followups`로 24시간 후속 알림 트리거
 
 ## 데이터 모델 (Prisma 개요)
 

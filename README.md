@@ -6,24 +6,32 @@
 
 ## 기술 스택
 
+Next.js 프로젝트 하나(App Router)에서 클라이언트와 서버(API Routes)를 함께 구성합니다. 별도 리포/배포 단위가 아니라 실행 위치 기준의 구분입니다.
+
+**클라이언트 (App)**
 - Next.js (App Router) + TypeScript
 - Tailwind CSS
-- Prisma + SQLite
+- Service Worker (Web Push 구독/수신)
+
+**서버 (API Routes)**
 - NextAuth (Credentials Provider)
-- Anthropic API (이미지 분석 및 캐릭터 응답 생성)
-- Web Push (VAPID)
+- Prisma + MySQL
+- Anthropic API (이미지 분석 및 캐릭터 응답 생성, 서버에서만 호출)
+- Web Push (VAPID) 발송
 
 ## 사전 준비물
 
 - Node.js 20 LTS 이상
+- MySQL (로컬은 Docker 권장)
 - Anthropic API 키
 - VAPID 키 쌍 (Web Push 발송용)
 
 ## 시작하기
 
 ```bash
+docker compose up -d db   # 로컬 MySQL 컨테이너 실행
 npm install
-cp .env.example .env   # 아래 환경 변수 값 채우기
+cp .env.example .env      # 아래 환경 변수 값 채우기
 npx prisma migrate dev
 npm run dev
 ```
@@ -34,7 +42,7 @@ npm run dev
 
 | 변수 | 설명 |
 | --- | --- |
-| `DATABASE_URL` | Prisma용 SQLite 파일 경로 (예: `file:./dev.db`) |
+| `DATABASE_URL` | Prisma용 MySQL 접속 문자열 (예: `mysql://user:password@localhost:3306/somemate`) |
 | `NEXTAUTH_SECRET` | NextAuth 세션 암호화 시크릿 |
 | `ANTHROPIC_API_KEY` | 이미지 분석 및 캐릭터 응답 생성에 사용 (서버 전용, 클라이언트 노출 금지) |
 | `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` | Web Push 발송용 키 쌍 |
