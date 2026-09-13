@@ -2,7 +2,7 @@
 
 대화 캡처와 고민을 공유하면 성격이 다른 AI 친구 3명(낙관 / 신중 / 현실)이 각자의 관점으로 해석해주는 관계 상담 웹앱. 연애뿐 아니라 친구·동료·가족 관계도 다루는 모바일 우선 반응형 웹앱입니다.
 
-> 현재 상태: 기획/스펙 정의 단계. 코드 스캐폴딩은 아직 진행 전입니다. 전체 요구사항은 [CLAUDE.md](CLAUDE.md), API 스펙은 [docs/API.md](docs/API.md) 참고.
+> 현재 상태: 기획/스펙 정의 단계. 코드 스캐폴딩은 아직 진행 전입니다. 전체 요구사항은 [AGENTS.md](AGENTS.md), API 스펙은 [docs/API.md](docs/API.md) 참고.
 
 ## 기술 스택
 
@@ -42,5 +42,5 @@ npm run dev
 
 ## 문서
 
-- [CLAUDE.md](CLAUDE.md) — 기능 명세, 데이터 모델, 디자인 방향, 구현 범위
+- [AGENTS.md](AGENTS.md) — 기능 명세, 데이터 모델, 디자인 방향, 구현 범위 (Claude Code / Codex 공통 참조 문서. `CLAUDE.md`는 이 파일을 가져오는 얇은 포인터입니다)
 - [docs/API.md](docs/API.md) — API 엔드포인트 상세 스펙
