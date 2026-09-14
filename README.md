@@ -22,16 +22,15 @@ Next.js 프로젝트 하나(App Router)에서 클라이언트와 서버(API Rout
 ## 사전 준비물
 
 - Node.js 20 LTS 이상
-- MySQL (로컬은 Docker 권장)
+- MySQL 접속 정보 (서버에 직접 구성된 인스턴스 사용, 로컬 컨테이너 없음)
 - 비전 지원 LLM API 키 (제공사 미정)
 - VAPID 키 쌍 (Web Push 발송용)
 
 ## 시작하기
 
 ```bash
-docker compose up -d db   # 로컬 MySQL 컨테이너 실행
 npm install
-cp .env.example .env      # 아래 환경 변수 값 채우기
+cp .env.example .env      # 아래 환경 변수 값 채우기 (DATABASE_URL 포함)
 npx prisma migrate dev
 npm run dev
 ```
@@ -42,7 +41,7 @@ npm run dev
 
 | 변수 | 설명 |
 | --- | --- |
-| `DATABASE_URL` | Prisma용 MySQL 접속 문자열 (예: `mysql://user:password@localhost:3306/somemate`) |
+| `DATABASE_URL` | Prisma용 MySQL 접속 문자열 (예: `mysql://user:password@서버주소:3306/somemate`, 서버에 직접 구성된 MySQL 인스턴스) |
 | `NEXTAUTH_SECRET` | NextAuth 세션 암호화 시크릿 |
 | `LLM_API_KEY` | 이미지 분석 및 캐릭터 응답 생성에 사용하는 비전 지원 LLM API 키 (제공사 미정, 서버 전용, 클라이언트 노출 금지) |
 | `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` | Web Push 발송용 키 쌍 |
