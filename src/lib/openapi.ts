@@ -464,7 +464,8 @@ export const openApiDocument = {
       post: {
         tags: ["후속 알림"],
         summary: "Web Push 구독 등록",
-        "x-status": "planned",
+        description: "동일 endpoint로 재구독하면 upsert로 갱신(중복 생성 없음).",
+        "x-status": "implemented",
         requestBody: {
           required: true,
           content: {
@@ -485,9 +486,11 @@ export const openApiDocument = {
         },
         responses: {
           "201": {
-            description: "미구현",
+            description: "생성됨",
             content: { "application/json": { schema: { type: "object", properties: { id: { type: "string" } } } } },
           },
+          "400": { description: "VALIDATION_ERROR", content: { "application/json": { schema: ErrorResponse } } },
+          "401": { description: "UNAUTHENTICATED", content: { "application/json": { schema: ErrorResponse } } },
         },
       },
     },
@@ -495,11 +498,15 @@ export const openApiDocument = {
       delete: {
         tags: ["후속 알림"],
         summary: "Web Push 구독 삭제",
-        "x-status": "planned",
+        "x-status": "implemented",
         parameters: [{ name: "subscriptionId", in: "path", required: true, schema: { type: "string" } }],
         responses: {
-          "200": { description: "미구현" },
-          "404": { description: "본인 소유 아님/존재하지 않음" },
+          "200": { description: "삭제됨" },
+          "401": { description: "UNAUTHENTICATED", content: { "application/json": { schema: ErrorResponse } } },
+          "404": {
+            description: "본인 소유 아님/존재하지 않음",
+            content: { "application/json": { schema: ErrorResponse } },
+          },
         },
       },
     },
@@ -507,34 +514,46 @@ export const openApiDocument = {
       post: {
         tags: ["후속 알림"],
         summary: "후속 알림 신청 (24시간 뒤 발송 예약)",
-        "x-status": "planned",
+        "x-status": "implemented",
         parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
         responses: {
           "200": {
-            description: "미구현",
+            description: "예약됨",
             content: {
               "application/json": {
                 schema: { type: "object", properties: { followupScheduledAt: { type: "string" } } },
               },
             },
           },
-          "404": { description: "본인 상담방 아님" },
-          "409": { description: "NO_SUBSCRIPTION — 저장된 Push 구독 없음" },
+          "401": { description: "UNAUTHENTICATED", content: { "application/json": { schema: ErrorResponse } } },
+          "404": {
+            description: "본인 상담방 아님",
+            content: { "application/json": { schema: ErrorResponse } },
+          },
+          "409": {
+            description: "NO_SUBSCRIPTION — 저장된 Push 구독 없음",
+            content: { "application/json": { schema: ErrorResponse } },
+          },
         },
       },
       delete: {
         tags: ["후속 알림"],
         summary: "후속 알림 예약 취소",
-        "x-status": "planned",
+        "x-status": "implemented",
         parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
-        responses: { "200": { description: "미구현" } },
+        responses: {
+          "200": { description: "취소됨" },
+          "401": { description: "UNAUTHENTICATED", content: { "application/json": { schema: ErrorResponse } } },
+          "404": { description: "본인 상담방 아님", content: { "application/json": { schema: ErrorResponse } } },
+        },
       },
     },
     "/api/internal/followups/dispatch": {
       post: {
         tags: ["후속 알림"],
         summary: "예약된 후속 알림 일괄 발송 (내부 전용, CRON_SECRET 필요)",
-        "x-status": "planned",
+        description: "외부 스케줄러(cron 등)가 주기적으로 호출. scripts/dispatch-followups.sh 참고.",
+        "x-status": "implemented",
         security: [],
         parameters: [
           {
@@ -547,10 +566,10 @@ export const openApiDocument = {
         ],
         responses: {
           "200": {
-            description: "미구현",
+            description: "발송 완료(개수는 발송 시도한 상담방 수)",
             content: { "application/json": { schema: { type: "object", properties: { sent: { type: "integer" } } } } },
           },
-          "401": { description: "시크릿 불일치" },
+          "401": { description: "시크릿 불일치", content: { "application/json": { schema: ErrorResponse } } },
         },
       },
     },

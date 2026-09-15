@@ -49,8 +49,17 @@ npm run dev
 | `NEXTAUTH_SECRET` | NextAuth 세션 암호화 시크릿 |
 | `NEXTAUTH_URL` | NextAuth 콜백 기준 URL (로컬: `http://localhost:3000`) |
 | `LLM_API_KEY` | 이미지 분석 및 캐릭터 응답 생성에 사용하는 비전 지원 LLM API 키 (제공사 미정, 서버 전용, 클라이언트 노출 금지) |
-| `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` | Web Push 발송용 키 쌍 |
+| `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` | Web Push 발송용 키 쌍 (생성: `npx web-push generate-vapid-keys`) |
+| `VAPID_SUBJECT` | (선택) Web Push 발신자 식별자, 예: `mailto:you@example.com`. 미설정 시 기본값 사용 |
 | `CRON_SECRET` | 후속 알림 발송 내부 엔드포인트(`/api/internal/followups/dispatch`) 인증용 |
+
+## 후속 알림 발송 스케줄러
+
+`/api/internal/followups/dispatch`는 외부에서 주기적으로 호출해줘야 실제 발송이 된다(서버가 스스로 타이머를 돌리지 않음). `scripts/dispatch-followups.sh`를 cron에 등록해서 사용:
+
+```bash
+*/15 * * * * APP_URL=http://localhost:3000 CRON_SECRET=xxxx /path/to/somemate/scripts/dispatch-followups.sh >> /var/log/somemate-followups.log 2>&1
+```
 
 ## 문서
 

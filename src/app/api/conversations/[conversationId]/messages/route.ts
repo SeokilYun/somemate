@@ -33,9 +33,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ con
   const userMessage = await prisma.message.create({
     data: { conversationId: conversation.id, role: "user", content: text, imageUrl },
   });
+  // 예약된 후속 알림이 있는데(아직 미발송) 사용자가 먼저 대화를 시작했다면 예약 자동 취소(AGENTS.md 후속 알림 규칙).
+  const shouldCancelFollowup = conversation.followupScheduledAt !== null && conversation.followupSentAt === null;
   await prisma.conversation.update({
     where: { id: conversation.id },
-    data: { lastMessageAt: userMessage.createdAt },
+    data: {
+      lastMessageAt: userMessage.createdAt,
+      ...(shouldCancelFollowup ? { followupScheduledAt: null } : {}),
+    },
   });
 
   if (!imageUrl) {

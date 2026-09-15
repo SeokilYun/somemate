@@ -29,7 +29,7 @@ AGENTS.md 협업 원칙 "작게 연결하며 검증한다"의 순서를 C 관점
 | M2 | Partner 저장 | Partner 생성/수정 API, 소유권 검증 | ✅ 완료 (실서버 DB로 검증) |
 | M3 | Conversation/Message 저장 | 상담방 생성(+인사 메시지 저장은 B와 연결), 메시지 영속 저장, 재접속 시 히스토리 복원 | ✅ 완료 (저장/조회 구조, 실서버 DB로 검증. 이미지 분석 자체는 B 연동 대기 — 아래 참고) |
 | M4 | 이미지 저장 | 업로드/서빙 API, 사용자 경로 격리 + 소유자 검증 | ✅ 완료 (실서버 DB/파일시스템으로 검증) |
-| M5 | 후속 알림 | 구독 저장, 예약/취소, 24시간 디스패치 | ⬜ 예정 |
+| M5 | 후속 알림 | 구독 저장, 예약/취소, 24시간 디스패치 | ✅ 완료 (실서버 DB로 검증, 실제 발송은 cron 연결 필요) |
 | M6 | 배포·운영 | 배포 파이프라인, 에러/비용 모니터링 | ⬜ 예정 |
 
 각 단계 끝에서 관련 담당(A/B)과 함께 실제로 눌러보고 연결 상태를 확인한다(AGENTS.md "매 작업일이 끝날 때 함께 실행").
@@ -69,11 +69,12 @@ AGENTS.md 협업 원칙 "작게 연결하며 검증한다"의 순서를 C 관점
 - B의 첨부 화면과 연결, 분석 API가 이 `imageUrl`을 그대로 사용하도록 확인
 
 ### M5 — 후속 알림
-- `POST /api/push-subscriptions`, `DELETE /api/push-subscriptions/:id`
+- `POST /api/push-subscriptions`(동일 endpoint 재구독 시 upsert), `DELETE /api/push-subscriptions/:id`
 - `POST/DELETE /api/conversations/:id/followup` (예약/취소, 구독 없으면 409 `NO_SUBSCRIPTION`)
-- `POST /api/internal/followups/dispatch`: `CRON_SECRET` 검증, `followupScheduledAt <= now && followupSentAt IS NULL` 조회 → 발송 → `followupSentAt` 기록
-- 로컬 실행 방식 결정 필요(아래 5번 항목) — 우선 로컬 cron/스케줄 스크립트로 검증 후 배포 환경에 맞게 교체
-- "사용자가 예약 전 먼저 대화 시작 시 자동 취소" 로직은 메시지 저장 시점(M3)에 훅으로 연결
+- `POST /api/internal/followups/dispatch`: `CRON_SECRET` 검증, `followupScheduledAt <= now && followupSentAt IS NULL` 조회 → `src/lib/push.ts`(`web-push` + VAPID)로 해당 유저의 모든 구독에 발송 → `followupSentAt` 기록. 구독이 만료(410/404 응답)면 해당 PushSubscription 자동 삭제
+- "사용자가 예약 전 먼저 대화 시작 시 자동 취소" — `POST /api/conversations/:id/messages`(M3)에서 사용자 메시지 저장 시 `followupScheduledAt`이 있고 아직 미발송이면 자동으로 null 처리하도록 훅 연결 완료
+- 실행 방식: `scripts/dispatch-followups.sh` + cron으로 주기 호출(README "후속 알림 발송 스케줄러" 참고) — **실제 cron 등록은 배포 대상 서버에서 해야 함, 아직 미등록**
+- VAPID 키/CRON_SECRET은 로컬 `.env`에 실제 값으로 생성해 테스트 완료(커밋 안 됨) — 프로덕션용 값은 배포 시 별도로 발급해 서버 환경변수에 설정 필요
 
 ### M6 — 배포·운영
 - 배포 대상 확정(Vercel/자체 서버 등) 및 MySQL 연결 방식
@@ -92,9 +93,9 @@ AGENTS.md 협업 원칙 "작게 연결하며 검증한다"의 순서를 C 관점
 AGENTS.md "구현 범위 구분"의 환경 설정 필요 항목 중 C가 값을 확정/셋업해야 하는 것:
 
 - `LLM_API_KEY`: 제공사 미정 — B와 협의해 선정, 서버 환경 변수로만 보관
-- `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY`: `web-push generate-vapid-keys`로 생성
-- 알림 발송 스케줄러: 로컬은 cron 또는 상시 프로세스, 배포 환경(예: Vercel이면 Vercel Cron)에 맞는 방식 선택 — 배포 대상이 정해지면 확정
-- `CRON_SECRET`: 임의 값 생성, 배포 환경 변수에 등록
+- `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY`: `web-push generate-vapid-keys`로 생성 — 로컬 개발용은 생성해서 검증 완료, **배포용은 별도로 새로 발급해 서버 환경변수에 등록해야 함**(로컬 키를 프로덕션에 재사용하지 않기)
+- 알림 발송 스케줄러: `scripts/dispatch-followups.sh` 작성 완료, 로컬은 cron으로 검증 가능 — 배포 환경(예: Vercel이면 Vercel Cron)에 맞는 실제 등록은 M6에서 배포 대상 확정 후 진행
+- `CRON_SECRET`: 임의 값 생성, 배포 환경 변수에 등록(로컬은 생성해 테스트 완료)
 
 값이 없는 동안 알림 발송 화면/기능은 AGENTS.md 규칙대로 "데모" 배지로 명시.
 
@@ -107,15 +108,15 @@ AGENTS.md "구현 범위 구분"의 환경 설정 필요 항목 중 C가 값을 
 
 ## 7. 검증 체크리스트 (C 관련 부분)
 
-- [ ] 회원가입 → 로그인 → 세션 유지(새로고침 후에도 로그인 상태)
-- [ ] 상대방 정보 저장 → 재조회 시 값 일치
-- [ ] 타 유저 계정으로 남의 Conversation/Partner/이미지 접근 시 전부 404
-- [ ] 이미지 업로드 → 소유자만 서빙 확인
-- [ ] 대화 재접속 후 메시지 기록 복원(순서/내용 일치)
-- [ ] 후속 알림 신청 → 24시간 뒤(테스트 시 단축 간격) 발송 확인
-- [ ] 알림 신청 전 사용자가 먼저 대화 시작 시 예약 자동 취소
-- [ ] 사용자 직접 알림 취소 동작
-- [ ] 알림 클릭 → 로그인 필요 시 로그인 후 해당 상담방 이동
+- [x] 회원가입 → 로그인 → 세션 유지(새로고침 후에도 로그인 상태)
+- [x] 상대방 정보 저장 → 재조회 시 값 일치
+- [x] 타 유저 계정으로 남의 Conversation/Partner/이미지 접근 시 전부 404
+- [x] 이미지 업로드 → 소유자만 서빙 확인
+- [x] 대화 재접속 후 메시지 기록 복원(순서/내용 일치)
+- [x] 후속 알림 신청 → 발송 확인(dispatch 엔드포인트 단위로 검증 — 예약 시각을 과거로 조작해 발송 로직 자체는 확인, 실제 24시간 대기 + 실제 브라우저 구독으로 수신되는지는 A의 Service Worker/알림 UI 완성 후 통합 테스트 필요)
+- [x] 알림 신청 전 사용자가 먼저 대화 시작 시 예약 자동 취소
+- [x] 사용자 직접 알림 취소 동작
+- [ ] 알림 클릭 → 로그인 필요 시 로그인 후 해당 상담방 이동 (A의 화면/Service Worker 구현 이후 통합 테스트 필요)
 
 ## 8. 리스크
 
