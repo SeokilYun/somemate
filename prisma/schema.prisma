@@ -1,0 +1,99 @@
+// Prisma 스키마 — 데이터 모델은 AGENTS.md "데이터 모델 (Prisma 개요)" 절과 반드시 일치시킨다.
+// 필드를 추가/변경할 때는 AGENTS.md도 함께 갱신한다.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Relationship {
+  some
+  dating
+  coworker
+  friend
+  parent
+  other
+}
+
+enum MessageRole {
+  user
+  optimistic
+  cautious
+  realistic
+  system
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+
+  partners          Partner[]
+  conversations     Conversation[]
+  pushSubscriptions PushSubscription[]
+}
+
+model Partner {
+  id                 String       @id @default(cuid())
+  userId             String
+  name               String
+  age                Int?
+  mbti               String?
+  interests          Json         @default("[]")
+  relationship       Relationship
+  relationshipCustom String?
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  conversations Conversation[]
+
+  @@index([userId])
+}
+
+model Conversation {
+  id                  String    @id @default(cuid())
+  userId              String
+  partnerId           String
+  createdAt           DateTime  @default(now())
+  lastMessageAt       DateTime?
+  firstAnalysisAt     DateTime?
+  followupScheduledAt DateTime?
+  followupSentAt      DateTime?
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  partner  Partner   @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  messages Message[]
+
+  @@index([userId, lastMessageAt])
+  @@index([partnerId])
+}
+
+model Message {
+  id             String      @id @default(cuid())
+  conversationId String
+  role           MessageRole
+  content        String?     @db.Text
+  imageUrl       String?
+  createdAt      DateTime    @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+}
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  endpoint  String   @unique
+  keys      Json
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
