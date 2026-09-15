@@ -35,7 +35,9 @@ npx prisma db push        # 스키마를 DB에 반영 (아래 참고: migrate de
 npm run dev
 ```
 
-`http://localhost:3000` 접속.
+`http://localhost:3000` 접속. 서버 실행 로그에 API 문서 URL이 함께 출력된다.
+
+**API 문서(Swagger UI)**: [http://localhost:3000/api-docs](http://localhost:3000/api-docs) — `docs/API.md` 전체 스펙을 실제 구현 여부와 함께 보여준다(구현된 엔드포인트/계획만 있는 엔드포인트 모두 포함, 스펙 원본은 `src/lib/openapi.ts`). 새 엔드포인트를 구현하거나 스펙이 바뀌면 `docs/API.md`와 `src/lib/openapi.ts`를 함께 갱신할 것.
 
 > **`migrate dev`가 아닌 `db push`를 쓰는 이유**: 서버 DB 계정에 shadow database 생성 권한이 없어 `prisma migrate dev`가 동작하지 않는다(P3014). 당분간 `prisma db push`로 스키마를 직접 동기화하고, 마이그레이션 히스토리(`prisma/migrations/`)는 쌓이지 않는다. `schema.prisma`를 변경하면 반드시 `npx prisma db push`를 다시 실행해 DB에 반영할 것.
 

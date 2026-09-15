@@ -26,8 +26,8 @@ AGENTS.md 협업 원칙 "작게 연결하며 검증한다"의 순서를 C 관점
 | --- | --- | --- | --- |
 | M0 | 로컬 개발 환경 | 서버 MySQL `DATABASE_URL` 연결 + `npx prisma db push`로 스키마 반영, `npm run dev` 기동 | ✅ 완료 |
 | M1 | 인증 | 회원가입/로그인/로그아웃, 세션으로 보호된 API 접근 가능 | ✅ 완료 (실서버 DB로 검증) |
-| M2 | Partner 저장 | Partner 생성/수정 API, 소유권 검증 | ⬜ 예정 |
-| M3 | Conversation/Message 저장 | 상담방 생성(+인사 메시지 저장은 B와 연결), 메시지 영속 저장, 재접속 시 히스토리 복원 | ⬜ 예정 |
+| M2 | Partner 저장 | Partner 생성/수정 API, 소유권 검증 | ✅ 완료 (실서버 DB로 검증) |
+| M3 | Conversation/Message 저장 | 상담방 생성(+인사 메시지 저장은 B와 연결), 메시지 영속 저장, 재접속 시 히스토리 복원 | ✅ 완료 (저장/조회 구조, 실서버 DB로 검증. 이미지 분석 자체는 B 연동 대기 — 아래 참고) |
 | M4 | 이미지 저장 | 업로드/서빙 API, 사용자 경로 격리 + 소유자 검증 | ⬜ 예정 |
 | M5 | 후속 알림 | 구독 저장, 예약/취소, 24시간 디스패치 | ⬜ 예정 |
 | M6 | 배포·운영 | 배포 파이프라인, 에러/비용 모니터링 | ⬜ 예정 |
@@ -58,8 +58,9 @@ AGENTS.md 협업 원칙 "작게 연결하며 검증한다"의 순서를 C 관점
 ### M3 — Conversation / Message
 - `POST /api/conversations`(생성), `GET /api/conversations`(목록), `GET /api/conversations/:id`(히스토리 복원)
 - `POST /api/conversations/:id/messages` 중 저장/조회 구조는 C, 분석 응답 생성 로직은 B — 인터페이스(요청/응답 스키마)는 docs/API.md 고정, B가 이 스키마에 맞춰 구현하도록 맞춤
-- 최초 진입 인사 메시지 저장(1회) 로직: "이미 인사 메시지가 있는가" 판단은 저장된 Message 존재 여부로 처리 → 재진입 시 중복 생성 방지
-- 재로그인/새로고침 후 메시지 순서·내용 복원 검증
+- 최초 진입 인사 메시지: `POST /api/conversations` 생성 시점에 낙관→신중→현실→시스템 순으로 1회 저장(트랜잭션), 재진입은 `GET /api/conversations/:id`가 저장된 메시지를 그대로 복원하므로 중복 생성 자체가 없음
+- 재로그인/새로고침 후 메시지 순서·내용 복원 검증 완료(`createdAt asc, id asc` 정렬)
+- `src/lib/analysis.ts`에 `analyzeConversationImage()` 시그니처만 확정해두고 내부는 미구현(`AnalysisNotConfiguredError`) — LLM_API_KEY 없으면 라우트가 스펙대로 `502 ANALYSIS_FAILED` 반환, 사용자 메시지는 저장 유지. **B가 이 함수 내부만 실제 비전 LLM 호출로 교체하면 연동 끝나는 구조.**
 
 ### M4 — 이미지
 - `POST /api/images`(multipart, `uploads/{userId}/{uuid}.ext`), `GET /api/images/:imageId`(소유자 세션만)
@@ -78,6 +79,12 @@ AGENTS.md 협업 원칙 "작게 연결하며 검증한다"의 순서를 C 관점
 - 에러 로깅(최소 서버 로그 또는 외부 서비스) 확인 체계
 - LLM API 비용/사용량 확인 방법(B와 협의해 로그에 토큰/호출 수 남기기)
 - 배포 후 실제 환경에서 M1~M5 체크리스트 재확인
+
+### 부가 — API 문서(Swagger UI)
+- `/api-docs`에서 Swagger UI로 docs/API.md 전체 스펙 확인 가능(구현/계획 엔드포인트 모두 표시, `x-status` 필드로 구분)
+- 스펙 원본은 `src/lib/openapi.ts`(TS 객체) → `/api/openapi.json`으로 서빙 → `swagger-ui-react`가 렌더링
+- `npm run dev` 기동 시 콘솔에 문서 URL 로그 출력(`src/instrumentation.ts`)
+- 새 엔드포인트 구현/스펙 변경 시 **docs/API.md + src/lib/openapi.ts 둘 다** 갱신 필요(자동 동기화 아님)
 
 ## 5. 결정이 필요한 외부 요소 (환경 설정 필요)
 

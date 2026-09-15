@@ -1,0 +1,551 @@
+/**
+ * OpenAPI 3.0 스펙 — docs/API.md를 그대로 옮긴 것.
+ * 각 operation의 `x-status`는 실제 코드 구현 여부를 나타낸다:
+ *   - "implemented": src/app/api 아래에 라우트 핸들러가 존재
+ *   - "planned": docs/API.md에는 정의되어 있지만 아직 구현 전
+ * 엔드포인트를 새로 구현하거나 스펙을 바꾸면 이 파일과 docs/API.md를 함께 갱신한다.
+ */
+
+const ErrorResponse = {
+  type: "object",
+  properties: {
+    error: {
+      type: "object",
+      properties: {
+        code: { type: "string" },
+        message: { type: "string" },
+      },
+      required: ["code", "message"],
+    },
+  },
+  required: ["error"],
+};
+
+const Partner = {
+  type: "object",
+  properties: {
+    id: { type: "string" },
+    name: { type: "string" },
+    age: { type: "integer", nullable: true },
+    mbti: { type: "string", nullable: true },
+    interests: { type: "array", items: { type: "string" } },
+    relationship: { $ref: "#/components/schemas/Relationship" },
+    relationshipCustom: { type: "string", nullable: true },
+  },
+};
+
+const Message = {
+  type: "object",
+  properties: {
+    id: { type: "string" },
+    role: { $ref: "#/components/schemas/MessageRole" },
+    content: { type: "string", nullable: true },
+    imageUrl: { type: "string", nullable: true },
+    createdAt: { type: "string", format: "date-time" },
+  },
+};
+
+export const openApiDocument = {
+  openapi: "3.0.3",
+  info: {
+    title: "썸메이트 (Somemate) API",
+    version: "0.1.0",
+    description:
+      "docs/API.md 기반 스펙. `x-status: implemented`는 실제 구현되어 동작하는 엔드포인트, " +
+      "`x-status: planned`는 아직 구현되지 않은(계획 단계) 엔드포인트다.",
+  },
+  servers: [{ url: "/" }],
+  tags: [
+    { name: "인증", description: "회원가입/로그인/세션" },
+    { name: "상대방", description: "상담 대상(Partner) 정보" },
+    { name: "상담방", description: "Conversation 생성·조회" },
+    { name: "메시지", description: "메시지 전송 및 3캐릭터 분석" },
+    { name: "이미지", description: "이미지 업로드/서빙" },
+    { name: "후속 알림", description: "Web Push 구독 및 24시간 후속 알림" },
+  ],
+  components: {
+    securitySchemes: {
+      sessionCookie: {
+        type: "apiKey",
+        in: "cookie",
+        name: "next-auth.session-token",
+        description: "NextAuth JWT 세션 쿠키. /api/users, /api/auth/* 제외 모든 엔드포인트에 필요.",
+      },
+    },
+    schemas: {
+      Relationship: {
+        type: "string",
+        enum: ["some", "dating", "coworker", "friend", "parent", "other"],
+      },
+      MessageRole: {
+        type: "string",
+        enum: ["user", "optimistic", "cautious", "realistic", "system"],
+      },
+      Error: ErrorResponse,
+      Partner,
+      Message,
+    },
+  },
+  security: [{ sessionCookie: [] }],
+  paths: {
+    "/api/users": {
+      post: {
+        tags: ["인증"],
+        summary: "회원가입",
+        "x-status": "implemented",
+        security: [],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["email", "password"],
+                properties: { email: { type: "string" }, password: { type: "string" } },
+              },
+            },
+          },
+        },
+        responses: {
+          "201": {
+            description: "생성됨",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: { id: { type: "string" }, email: { type: "string" } },
+                },
+              },
+            },
+          },
+          "400": { description: "VALIDATION_ERROR", content: { "application/json": { schema: ErrorResponse } } },
+          "409": { description: "EMAIL_TAKEN", content: { "application/json": { schema: ErrorResponse } } },
+        },
+      },
+    },
+    "/api/auth/session": {
+      get: {
+        tags: ["인증"],
+        summary: "세션 조회 (NextAuth 표준 경로)",
+        "x-status": "implemented",
+        responses: {
+          "200": {
+            description: "로그인 상태면 user 포함, 아니면 빈 객체",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    user: {
+                      type: "object",
+                      nullable: true,
+                      properties: { id: { type: "string" }, email: { type: "string" } },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/api/partners": {
+      post: {
+        tags: ["상대방"],
+        summary: "상대방 정보 생성",
+        "x-status": "implemented",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["name", "relationship"],
+                properties: {
+                  name: { type: "string" },
+                  age: { type: "integer", nullable: true },
+                  mbti: { type: "string", nullable: true },
+                  interests: { type: "array", items: { type: "string" } },
+                  relationship: { $ref: "#/components/schemas/Relationship" },
+                  relationshipCustom: { type: "string", nullable: true },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          "201": {
+            description: "생성됨",
+            content: { "application/json": { schema: { type: "object", properties: { partner: Partner } } } },
+          },
+          "400": { description: "VALIDATION_ERROR", content: { "application/json": { schema: ErrorResponse } } },
+          "401": { description: "UNAUTHENTICATED", content: { "application/json": { schema: ErrorResponse } } },
+        },
+      },
+    },
+    "/api/partners/{partnerId}": {
+      patch: {
+        tags: ["상대방"],
+        summary: "상대방 정보 부분 수정",
+        "x-status": "implemented",
+        parameters: [{ name: "partnerId", in: "path", required: true, schema: { type: "string" } }],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  name: { type: "string" },
+                  age: { type: "integer", nullable: true },
+                  mbti: { type: "string", nullable: true },
+                  interests: { type: "array", items: { type: "string" } },
+                  relationship: { $ref: "#/components/schemas/Relationship" },
+                  relationshipCustom: { type: "string", nullable: true },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "수정됨",
+            content: { "application/json": { schema: { type: "object", properties: { partner: Partner } } } },
+          },
+          "400": { description: "VALIDATION_ERROR", content: { "application/json": { schema: ErrorResponse } } },
+          "401": { description: "UNAUTHENTICATED", content: { "application/json": { schema: ErrorResponse } } },
+          "404": {
+            description: "본인 소유 아님/존재하지 않음",
+            content: { "application/json": { schema: ErrorResponse } },
+          },
+        },
+      },
+    },
+    "/api/conversations": {
+      get: {
+        tags: ["상담방"],
+        summary: "상담방 목록 (메인페이지 카드)",
+        "x-status": "implemented",
+        responses: {
+          "200": {
+            description: "lastMessageAt 내림차순",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    conversations: {
+                      type: "array",
+                      items: {
+                        type: "object",
+                        properties: {
+                          id: { type: "string" },
+                          partner: {
+                            type: "object",
+                            properties: {
+                              id: { type: "string" },
+                              name: { type: "string" },
+                              relationship: { type: "string" },
+                            },
+                          },
+                          lastMessagePreview: { type: "string", nullable: true },
+                          lastMessageAt: { type: "string", format: "date-time", nullable: true },
+                          followupScheduledAt: { type: "string", format: "date-time", nullable: true },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          "401": { description: "UNAUTHENTICATED", content: { "application/json": { schema: ErrorResponse } } },
+        },
+      },
+      post: {
+        tags: ["상담방"],
+        summary: "상담방 생성 (세 친구 초대하고 시작하기)",
+        "x-status": "implemented",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { type: "object", required: ["partnerId"], properties: { partnerId: { type: "string" } } },
+            },
+          },
+        },
+        responses: {
+          "201": {
+            description: "생성됨 + 3캐릭터 인사 메시지 자동 생성",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    conversation: {
+                      type: "object",
+                      properties: {
+                        id: { type: "string" },
+                        partnerId: { type: "string" },
+                        createdAt: { type: "string", format: "date-time" },
+                      },
+                    },
+                    messages: { type: "array", items: Message },
+                  },
+                },
+              },
+            },
+          },
+          "400": { description: "VALIDATION_ERROR", content: { "application/json": { schema: ErrorResponse } } },
+          "401": { description: "UNAUTHENTICATED", content: { "application/json": { schema: ErrorResponse } } },
+          "404": {
+            description: "partnerId가 본인 소유 아님",
+            content: { "application/json": { schema: ErrorResponse } },
+          },
+        },
+      },
+    },
+    "/api/conversations/{id}": {
+      get: {
+        tags: ["상담방"],
+        summary: "상담방 히스토리 복원",
+        "x-status": "implemented",
+        parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
+        responses: {
+          "200": {
+            description: "전체 메시지 포함",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    conversation: {
+                      type: "object",
+                      properties: {
+                        id: { type: "string" },
+                        createdAt: { type: "string", format: "date-time" },
+                        firstAnalysisAt: { type: "string", format: "date-time", nullable: true },
+                        followupScheduledAt: { type: "string", format: "date-time", nullable: true },
+                      },
+                    },
+                    partner: Partner,
+                    messages: { type: "array", items: Message },
+                  },
+                },
+              },
+            },
+          },
+          "401": { description: "UNAUTHENTICATED", content: { "application/json": { schema: ErrorResponse } } },
+          "404": { description: "본인 소유 아님", content: { "application/json": { schema: ErrorResponse } } },
+        },
+      },
+    },
+    "/api/conversations/{id}/messages": {
+      post: {
+        tags: ["메시지"],
+        summary: "메시지 전송 (+이미지 있으면 3캐릭터 분석)",
+        description:
+          "저장/조회 구조는 구현 완료. 실제 비전 LLM 분석(src/lib/analysis.ts)은 아직 미구현 상태라 " +
+          "이미지가 포함된 요청은 현재 항상 502 ANALYSIS_FAILED를 반환한다(사용자 메시지는 저장됨).",
+        "x-status": "implemented",
+        parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  text: { type: "string", nullable: true },
+                  imageUrl: { type: "string", nullable: true },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          "201": {
+            description: "정상 분석 또는 확인 질문(needsClarification)",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    userMessage: Message,
+                    assistantMessages: { type: "array", items: Message },
+                    needsClarification: { type: "boolean" },
+                  },
+                },
+              },
+            },
+          },
+          "400": { description: "VALIDATION_ERROR", content: { "application/json": { schema: ErrorResponse } } },
+          "401": { description: "UNAUTHENTICATED", content: { "application/json": { schema: ErrorResponse } } },
+          "404": { description: "본인 상담방 아님", content: { "application/json": { schema: ErrorResponse } } },
+          "502": {
+            description: "ANALYSIS_FAILED — 분석 API 호출 실패, 사용자 메시지는 저장된 상태 유지",
+            content: { "application/json": { schema: ErrorResponse } },
+          },
+        },
+      },
+      get: {
+        tags: ["메시지"],
+        summary: "메시지 목록 페이지네이션 (기본은 GET /api/conversations/:id로 충분)",
+        "x-status": "planned",
+        parameters: [
+          { name: "id", in: "path", required: true, schema: { type: "string" } },
+          { name: "cursor", in: "query", required: false, schema: { type: "string" } },
+          { name: "limit", in: "query", required: false, schema: { type: "integer" } },
+        ],
+        responses: {
+          "200": {
+            description: "미구현",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    messages: { type: "array", items: Message },
+                    nextCursor: { type: "string", nullable: true },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/api/images": {
+      post: {
+        tags: ["이미지"],
+        summary: "이미지 업로드",
+        "x-status": "planned",
+        requestBody: {
+          required: true,
+          content: {
+            "multipart/form-data": {
+              schema: { type: "object", properties: { image: { type: "string", format: "binary" } } },
+            },
+          },
+        },
+        responses: {
+          "201": {
+            description: "미구현",
+            content: {
+              "application/json": {
+                schema: { type: "object", properties: { id: { type: "string" }, imageUrl: { type: "string" } } },
+              },
+            },
+          },
+          "400": { description: "VALIDATION_ERROR", content: { "application/json": { schema: ErrorResponse } } },
+        },
+      },
+    },
+    "/api/images/{imageId}": {
+      get: {
+        tags: ["이미지"],
+        summary: "이미지 조회 (소유자만)",
+        "x-status": "planned",
+        parameters: [{ name: "imageId", in: "path", required: true, schema: { type: "string" } }],
+        responses: {
+          "200": { description: "미구현 — 이미지 바이너리" },
+          "404": { description: "본인 소유 아님/존재하지 않음" },
+        },
+      },
+    },
+    "/api/push-subscriptions": {
+      post: {
+        tags: ["후속 알림"],
+        summary: "Web Push 구독 등록",
+        "x-status": "planned",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["endpoint", "keys"],
+                properties: {
+                  endpoint: { type: "string" },
+                  keys: {
+                    type: "object",
+                    properties: { p256dh: { type: "string" }, auth: { type: "string" } },
+                  },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          "201": {
+            description: "미구현",
+            content: { "application/json": { schema: { type: "object", properties: { id: { type: "string" } } } } },
+          },
+        },
+      },
+    },
+    "/api/push-subscriptions/{subscriptionId}": {
+      delete: {
+        tags: ["후속 알림"],
+        summary: "Web Push 구독 삭제",
+        "x-status": "planned",
+        parameters: [{ name: "subscriptionId", in: "path", required: true, schema: { type: "string" } }],
+        responses: {
+          "200": { description: "미구현" },
+          "404": { description: "본인 소유 아님/존재하지 않음" },
+        },
+      },
+    },
+    "/api/conversations/{id}/followup": {
+      post: {
+        tags: ["후속 알림"],
+        summary: "후속 알림 신청 (24시간 뒤 발송 예약)",
+        "x-status": "planned",
+        parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
+        responses: {
+          "200": {
+            description: "미구현",
+            content: {
+              "application/json": {
+                schema: { type: "object", properties: { followupScheduledAt: { type: "string" } } },
+              },
+            },
+          },
+          "404": { description: "본인 상담방 아님" },
+          "409": { description: "NO_SUBSCRIPTION — 저장된 Push 구독 없음" },
+        },
+      },
+      delete: {
+        tags: ["후속 알림"],
+        summary: "후속 알림 예약 취소",
+        "x-status": "planned",
+        parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
+        responses: { "200": { description: "미구현" } },
+      },
+    },
+    "/api/internal/followups/dispatch": {
+      post: {
+        tags: ["후속 알림"],
+        summary: "예약된 후속 알림 일괄 발송 (내부 전용, CRON_SECRET 필요)",
+        "x-status": "planned",
+        security: [],
+        parameters: [
+          {
+            name: "Authorization",
+            in: "header",
+            required: true,
+            schema: { type: "string" },
+            description: "Bearer {CRON_SECRET}",
+          },
+        ],
+        responses: {
+          "200": {
+            description: "미구현",
+            content: { "application/json": { schema: { type: "object", properties: { sent: { type: "integer" } } } } },
+          },
+          "401": { description: "시크릿 불일치" },
+        },
+      },
+    },
+  },
+};
