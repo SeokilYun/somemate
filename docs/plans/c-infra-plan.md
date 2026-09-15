@@ -28,7 +28,7 @@ AGENTS.md 협업 원칙 "작게 연결하며 검증한다"의 순서를 C 관점
 | M1 | 인증 | 회원가입/로그인/로그아웃, 세션으로 보호된 API 접근 가능 | ✅ 완료 (실서버 DB로 검증) |
 | M2 | Partner 저장 | Partner 생성/수정 API, 소유권 검증 | ✅ 완료 (실서버 DB로 검증) |
 | M3 | Conversation/Message 저장 | 상담방 생성(+인사 메시지 저장은 B와 연결), 메시지 영속 저장, 재접속 시 히스토리 복원 | ✅ 완료 (저장/조회 구조, 실서버 DB로 검증. 이미지 분석 자체는 B 연동 대기 — 아래 참고) |
-| M4 | 이미지 저장 | 업로드/서빙 API, 사용자 경로 격리 + 소유자 검증 | ⬜ 예정 |
+| M4 | 이미지 저장 | 업로드/서빙 API, 사용자 경로 격리 + 소유자 검증 | ✅ 완료 (실서버 DB/파일시스템으로 검증) |
 | M5 | 후속 알림 | 구독 저장, 예약/취소, 24시간 디스패치 | ⬜ 예정 |
 | M6 | 배포·운영 | 배포 파이프라인, 에러/비용 모니터링 | ⬜ 예정 |
 
@@ -64,7 +64,8 @@ AGENTS.md 협업 원칙 "작게 연결하며 검증한다"의 순서를 C 관점
 
 ### M4 — 이미지
 - `POST /api/images`(multipart, `uploads/{userId}/{uuid}.ext`), `GET /api/images/:imageId`(소유자 세션만)
-- 10MB 제한, 이미지 MIME 검증
+- 10MB 제한, MIME 허용목록(jpeg/png/webp/gif)만 통과, imageId 정규식 검증으로 path traversal 차단
+- 별도 Image 테이블 없이 파일 경로 자체(`uploads/{sessionUserId}/{imageId}`)로 소유권 격리 — AGENTS.md 데이터 모델에 Image 엔티티가 없어서 택한 구조, GET은 항상 "현재 로그인한 유저 폴더 안에서만" 찾는다
 - B의 첨부 화면과 연결, 분석 API가 이 `imageUrl`을 그대로 사용하도록 확인
 
 ### M5 — 후속 알림

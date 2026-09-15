@@ -419,7 +419,9 @@ export const openApiDocument = {
       post: {
         tags: ["이미지"],
         summary: "이미지 업로드",
-        "x-status": "planned",
+        description:
+          "jpeg/png/webp/gif만 허용, 10MB 제한. uploads/{userId}/{uuid}.ext 경로에 저장(DB 테이블 없이 경로 자체로 소유자 격리).",
+        "x-status": "implemented",
         requestBody: {
           required: true,
           content: {
@@ -430,7 +432,7 @@ export const openApiDocument = {
         },
         responses: {
           "201": {
-            description: "미구현",
+            description: "생성됨",
             content: {
               "application/json": {
                 schema: { type: "object", properties: { id: { type: "string" }, imageUrl: { type: "string" } } },
@@ -438,6 +440,7 @@ export const openApiDocument = {
             },
           },
           "400": { description: "VALIDATION_ERROR", content: { "application/json": { schema: ErrorResponse } } },
+          "401": { description: "UNAUTHENTICATED", content: { "application/json": { schema: ErrorResponse } } },
         },
       },
     },
@@ -445,11 +448,15 @@ export const openApiDocument = {
       get: {
         tags: ["이미지"],
         summary: "이미지 조회 (소유자만)",
-        "x-status": "planned",
+        "x-status": "implemented",
         parameters: [{ name: "imageId", in: "path", required: true, schema: { type: "string" } }],
         responses: {
-          "200": { description: "미구현 — 이미지 바이너리" },
-          "404": { description: "본인 소유 아님/존재하지 않음" },
+          "200": { description: "이미지 바이너리" },
+          "401": { description: "UNAUTHENTICATED", content: { "application/json": { schema: ErrorResponse } } },
+          "404": {
+            description: "본인 소유 아님/존재하지 않음",
+            content: { "application/json": { schema: ErrorResponse } },
+          },
         },
       },
     },
