@@ -1,6 +1,7 @@
 import path from "node:path";
 
 export const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
+export const MAX_IMAGES_PER_MESSAGE = 5;
 
 const MIME_TO_EXT: Record<string, string> = {
   "image/jpeg": ".jpg",

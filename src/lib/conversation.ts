@@ -13,7 +13,7 @@ export function serializeMessage(message: Message) {
     id: message.id,
     role: message.role,
     content: message.content,
-    imageUrl: message.imageUrl,
+    imageUrls: message.imageUrls as string[],
     createdAt: message.createdAt.toISOString(),
   };
 }
@@ -36,9 +36,10 @@ export function serializePartnerDetail(
 }
 
 /** GET /api/conversations의 lastMessagePreview용 — 이미지만 있는 메시지는 텍스트 대체 문구로 보여준다. */
-export function toLastMessagePreview(message: Pick<Message, "content" | "imageUrl"> | undefined) {
+export function toLastMessagePreview(message: Pick<Message, "content" | "imageUrls"> | undefined) {
   if (!message) return null;
   if (message.content) return message.content;
-  if (message.imageUrl) return "[이미지]";
+  const imageUrls = message.imageUrls as string[];
+  if (imageUrls.length > 0) return imageUrls.length > 1 ? `[이미지 ${imageUrls.length}장]` : "[이미지]";
   return null;
 }

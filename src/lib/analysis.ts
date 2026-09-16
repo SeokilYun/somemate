@@ -20,7 +20,7 @@ export type CharacterAnalysisResult =
  */
 // eslint-disable-next-line @typescript-eslint/no-unused-vars -- TODO(B): 구현 시 사용
 export async function analyzeConversationImage(_input: {
-  imageUrl: string;
+  imageUrls: string[];
   text: string | null;
   partner: Pick<Partner, "name" | "age" | "mbti" | "interests" | "relationship" | "relationshipCustom">;
   previousMessages: Array<Pick<Message, "role" | "content">>;

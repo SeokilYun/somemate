@@ -4,6 +4,7 @@ import { apiError } from "@/lib/api-error";
 import { getCurrentUserId } from "@/lib/session";
 import { serializeMessage } from "@/lib/conversation";
 import { analyzeConversationImage, AnalysisNotConfiguredError } from "@/lib/analysis";
+import { MAX_IMAGES_PER_MESSAGE } from "@/lib/images";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ conversationId: string }> }) {
   const userId = await getCurrentUserId();
@@ -23,15 +24,27 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ con
 
   const body = await req.json().catch(() => null);
   const text = typeof body?.text === "string" && body.text.trim().length > 0 ? body.text.trim() : null;
-  const imageUrl =
-    typeof body?.imageUrl === "string" && body.imageUrl.trim().length > 0 ? body.imageUrl.trim() : null;
-  if (!text && !imageUrl) {
-    return apiError(400, "VALIDATION_ERROR", "text 또는 imageUrl 중 최소 하나가 필요합니다.");
+
+  let imageUrls: string[] = [];
+  if (body?.imageUrls !== undefined) {
+    if (
+      !Array.isArray(body.imageUrls) ||
+      !body.imageUrls.every((v: unknown) => typeof v === "string" && v.trim().length > 0)
+    ) {
+      return apiError(400, "VALIDATION_ERROR", "imageUrls는 문자열 배열이어야 합니다.");
+    }
+    if (body.imageUrls.length > MAX_IMAGES_PER_MESSAGE) {
+      return apiError(400, "VALIDATION_ERROR", `이미지는 최대 ${MAX_IMAGES_PER_MESSAGE}장까지 첨부할 수 있습니다.`);
+    }
+    imageUrls = body.imageUrls;
+  }
+  if (!text && imageUrls.length === 0) {
+    return apiError(400, "VALIDATION_ERROR", "text 또는 imageUrls 중 최소 하나가 필요합니다.");
   }
 
   // 사용자 메시지는 분석 성공 여부와 무관하게 먼저 저장 — 분석 실패(502) 시에도 유지되어야 한다.
   const userMessage = await prisma.message.create({
-    data: { conversationId: conversation.id, role: "user", content: text, imageUrl },
+    data: { conversationId: conversation.id, role: "user", content: text, imageUrls },
   });
   // 예약된 후속 알림이 있는데(아직 미발송) 사용자가 먼저 대화를 시작했다면 예약 자동 취소(AGENTS.md 후속 알림 규칙).
   const shouldCancelFollowup = conversation.followupScheduledAt !== null && conversation.followupSentAt === null;
@@ -43,7 +56,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ con
     },
   });
 
-  if (!imageUrl) {
+  if (imageUrls.length === 0) {
     return NextResponse.json(
       { userMessage: serializeMessage(userMessage), assistantMessages: [], needsClarification: false },
       { status: 201 },
@@ -59,7 +72,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ con
   let analysis;
   try {
     analysis = await analyzeConversationImage({
-      imageUrl,
+      imageUrls,
       text,
       partner: conversation.partner,
       previousMessages,

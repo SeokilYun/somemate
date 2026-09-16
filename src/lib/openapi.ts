@@ -40,7 +40,7 @@ const Message = {
     id: { type: "string" },
     role: { $ref: "#/components/schemas/MessageRole" },
     content: { type: "string", nullable: true },
-    imageUrl: { type: "string", nullable: true },
+    imageUrls: { type: "array", items: { type: "string" } },
     createdAt: { type: "string", format: "date-time" },
   },
 };
@@ -464,7 +464,8 @@ export const openApiDocument = {
         tags: ["메시지"],
         summary: "메시지 전송 (+이미지 있으면 3캐릭터 분석)",
         description:
-          "저장/조회 구조는 구현 완료. 실제 비전 LLM 분석(src/lib/analysis.ts)은 아직 미구현 상태라 " +
+          "저장/조회 구조는 구현 완료. 이미지는 최대 5장까지 imageUrls 배열로 보낼 수 있다(각 URL은 " +
+          "POST /api/images 응답값을 그대로 사용). 실제 비전 LLM 분석(src/lib/analysis.ts)은 아직 미구현 상태라 " +
           "이미지가 포함된 요청은 현재 항상 502 ANALYSIS_FAILED를 반환한다(사용자 메시지는 저장됨).",
         "x-status": "implemented",
         parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
@@ -476,7 +477,7 @@ export const openApiDocument = {
                 type: "object",
                 properties: {
                   text: { type: "string", nullable: true },
-                  imageUrl: { type: "string", nullable: true },
+                  imageUrls: { type: "array", items: { type: "string" }, maxItems: 5 },
                 },
               },
             },
@@ -539,7 +540,9 @@ export const openApiDocument = {
         tags: ["이미지"],
         summary: "이미지 업로드",
         description:
-          "jpeg/png/webp/gif만 허용, 10MB 제한. uploads/{userId}/{uuid}.ext 경로에 저장(DB 테이블 없이 경로 자체로 소유자 격리).",
+          "jpeg/png/webp/gif만 허용, 10MB 제한. uploads/{userId}/{uuid}.ext 경로에 저장(DB 테이블 없이 경로 자체로 소유자 격리). " +
+          "한 번에 파일 1개만 받으므로, 메시지 하나에 이미지를 여러 장(최대 5장) 붙이려면 이 엔드포인트를 여러 번 호출해 " +
+          "imageUrl을 모은 뒤 POST /api/conversations/{id}/messages에 imageUrls 배열로 함께 보낸다.",
         "x-status": "implemented",
         requestBody: {
           required: true,

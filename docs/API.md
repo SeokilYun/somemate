@@ -100,7 +100,7 @@ Request: 위 필드 중 일부(부분 업데이트)
   "conversation": { "id": "string", "createdAt": "string", "firstAnalysisAt": "string | null", "followupScheduledAt": "string | null" },
   "partner": { "id": "string", "name": "string", "age": "number|null", "mbti": "string|null", "interests": ["string"], "relationship": "string" },
   "messages": [
-    { "id": "string", "role": "user", "content": "string|null", "imageUrl": "string|null", "createdAt": "string" }
+    { "id": "string", "role": "user", "content": "string|null", "imageUrls": ["string"], "createdAt": "string" }
   ]
 }
 ```
@@ -110,11 +110,11 @@ Request: 위 필드 중 일부(부분 업데이트)
 
 ### POST /api/conversations/:id/messages
 텍스트/이미지 전송 → 사용자 메시지 저장 후, 이미지가 있으면 3캐릭터 분석을 동기 처리해 함께 반환. 클라이언트는 응답 대기 중 "분석 중" 상태를 표시.
-- Request: `{ "text": "string | null", "imageUrl": "string | null" }` (`text`, `imageUrl` 중 최소 하나 필수, `imageUrl`은 `POST /api/images` 응답값 사용)
+- Request: `{ "text": "string | null", "imageUrls": ["string"] }` (`text`, `imageUrls` 중 최소 하나 필수, `imageUrls`는 최대 5개, 각 URL은 `POST /api/images` 응답값 사용)
 - 201 (정상 분석):
 ```json
 {
-  "userMessage": { "id": "string", "role": "user", "content": "string|null", "imageUrl": "string|null", "createdAt": "string" },
+  "userMessage": { "id": "string", "role": "user", "content": "string|null", "imageUrls": ["string"], "createdAt": "string" },
   "assistantMessages": [
     { "id": "string", "role": "optimistic", "content": "string", "createdAt": "string" },
     { "id": "string", "role": "cautious", "content": "string", "createdAt": "string" },
@@ -133,7 +133,7 @@ Request: 위 필드 중 일부(부분 업데이트)
   "needsClarification": true
 }
 ```
-- 400 `VALIDATION_ERROR`: text와 imageUrl 둘 다 없음
+- 400 `VALIDATION_ERROR`: text와 imageUrls 둘 다 없음, 또는 imageUrls가 5개 초과
 - 404: 본인 상담방 아님
 - 502 `ANALYSIS_FAILED`: 분석 API 호출 실패 → 클라이언트는 재시도 버튼 표시(사용자 메시지는 이미 저장된 상태 유지)
 
@@ -144,7 +144,7 @@ Request: 위 필드 중 일부(부분 업데이트)
 ## 5. 이미지 (Image)
 
 ### POST /api/images
-`multipart/form-data`, field 이름 `image`. 단일 이미지, 서버에서 `userId/uuid.ext` 경로로 저장.
+`multipart/form-data`, field 이름 `image`. 한 번에 파일 1개, 서버에서 `userId/uuid.ext` 경로로 저장. 메시지 하나에 이미지를 여러 장(최대 5장) 붙이려면 이 엔드포인트를 여러 번 호출해 `imageUrl`을 모은 뒤 `POST /api/conversations/:id/messages`에 `imageUrls` 배열로 함께 전달한다.
 - 201: `{ "id": "string", "imageUrl": "/api/images/{id}" }`
 - 400 `VALIDATION_ERROR`: 파일 없음/이미지 아님/용량 초과(예: 10MB 제한)
 

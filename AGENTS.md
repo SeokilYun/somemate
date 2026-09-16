@@ -59,7 +59,7 @@ Next.js 프로젝트 하나 안에서 App Router가 클라이언트와 서버(AP
 - `User`: id, email, passwordHash, createdAt
 - `Partner`(상담 대상 정보): id, userId, name, age?, mbti?, interests(string[] 또는 JSON), relationship, relationshipCustom?
 - `Conversation`(상담방): id, userId, partnerId, createdAt, lastMessageAt, firstAnalysisAt?, followupScheduledAt?, followupSentAt?
-- `Message`: id, conversationId, role(user/optimistic/cautious/realistic/system), content, imageUrl?, createdAt
+- `Message`: id, conversationId, role(user/optimistic/cautious/realistic/system), content, imageUrls?(string[], 최대 5장), createdAt
 - `PushSubscription`: id, userId, endpoint, keys(JSON)
 
 모든 조회는 `userId` 기준으로 스코프 — 본인 소유가 아닌 `Conversation`/`Message`/이미지 파일에는 접근 불가하도록 서버에서 검증.
@@ -88,7 +88,7 @@ Next.js 프로젝트 하나 안에서 App Router가 클라이언트와 서버(AP
 ### 4. 채팅방
 - 레이아웃: 상단(닉네임/관계/캐릭터), 중앙(메시지 스트림), 하단(사진 첨부/텍스트 입력/전송).
 - 신규 방 최초 진입 시 3캐릭터 인사 1회 자동 출력(낙관→신중→현실 순) + 업로드 안내 메시지. 재진입 시 인사 반복 금지, 마지막 메시지부터 이어서 표시.
-- 이미지 업로드: 1장, 전송 전 미리보기/취소, 상황 설명 텍스트는 선택. 전송 시 처리중 상태 표시.
+- 이미지 업로드: 최대 5장, 전송 전 미리보기/취소, 상황 설명 텍스트는 선택. 전송 시 처리중 상태 표시.
 - 분석 결과: 낙관→신중→현실 순서로 메시지 렌더링. 각 메시지는 (해석)+(근거로 삼은 표현/행동)+(다음에 해볼 행동)을 포함.
   - 규칙: 낙관은 무조건 긍정 금지, 현실은 공격적 어투 금지. 나이/MBTI는 보조 참고, 실제 대화 내용이 분석 중심. 속마음 단정·근거 없는 호감도 수치 금지. 텍스트를 읽기 어렵거나 화자 불분명 시 추측 금지, 사용자에게 확인 질문.
 - 후속 대화: 텍스트/새 이미지로 이어감, 캐릭터는 Partner 정보 + 이전 대화 맥락 반영.

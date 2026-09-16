@@ -78,7 +78,7 @@ model Message {
   conversationId String
   role           MessageRole
   content        String?     @db.Text
-  imageUrl       String?
+  imageUrls      Json        @default("[]")
   createdAt      DateTime    @default(now())
 
   conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
