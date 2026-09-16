@@ -18,10 +18,11 @@
 - 409 `EMAIL_TAKEN`: 이메일 중복
 
 ### /api/auth/[...nextauth]
-NextAuth Credentials Provider가 처리(프레임워크 표준 경로, REST 리소스 규칙 예외).
-- 로그인: NextAuth `signIn("credentials", { email, password })` → 실패 시 `CredentialsSignin` 에러를 클라이언트에서 매핑해 "이메일 또는 비밀번호가 올바르지 않습니다" 표시.
-- 로그아웃: `signOut()`
-- 세션 조회: `GET /api/auth/session` → `{ user: { id, email } } | {}`
+NextAuth Credentials Provider가 처리(프레임워크 표준 경로, REST 리소스 규칙 예외). 클라이언트는 보통 `signIn`/`signOut`/`useSession`(next-auth/react)으로 감싸 호출하면 되지만, 아래는 실제로 발생하는 하위 요청이다(NextAuth 내부 구현이라 스펙은 참고용, 언제든 바뀔 수 있음).
+- `GET /api/auth/csrf` → `{ "csrfToken": string }` — 로그인/로그아웃 POST 전에 먼저 호출해 토큰을 받아야 함
+- `POST /api/auth/callback/credentials` (`application/x-www-form-urlencoded`, `{ email, password, csrfToken }`) — 로그인: NextAuth `signIn("credentials", { email, password })` → 실패 시 `CredentialsSignin` 에러를 클라이언트에서 매핑해 "이메일 또는 비밀번호가 올바르지 않습니다" 표시.
+- `POST /api/auth/signout` (`{ csrfToken }`) — 로그아웃: `signOut()`, 세션 쿠키 삭제
+- `GET /api/auth/session` → `{ user: { id, email } } | {}` — 세션 조회
 
 ## 2. 상대방 정보 (Partner)
 

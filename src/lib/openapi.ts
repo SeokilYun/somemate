@@ -149,6 +149,81 @@ export const openApiDocument = {
         },
       },
     },
+    "/api/auth/csrf": {
+      get: {
+        tags: ["인증"],
+        summary: "CSRF 토큰 발급 (NextAuth 표준 경로)",
+        description:
+          "로그인/로그아웃 POST 전에 먼저 호출해 csrfToken을 받아야 한다. NextAuth 내부 구현이라 스펙은 참고용.",
+        "x-status": "implemented",
+        security: [],
+        responses: {
+          "200": {
+            description: "csrfToken 반환",
+            content: {
+              "application/json": {
+                schema: { type: "object", properties: { csrfToken: { type: "string" } } },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/api/auth/callback/credentials": {
+      post: {
+        tags: ["인증"],
+        summary: "로그인 (NextAuth Credentials 콜백, 표준 경로)",
+        description:
+          "email/password 로그인. NextAuth 내부 구현이라 스펙은 참고용 — csrfToken 포함 필수, " +
+          "성공 시 next-auth.session-token 쿠키가 설정된다.",
+        "x-status": "implemented",
+        security: [],
+        requestBody: {
+          required: true,
+          content: {
+            "application/x-www-form-urlencoded": {
+              schema: {
+                type: "object",
+                required: ["email", "password", "csrfToken"],
+                properties: {
+                  email: { type: "string" },
+                  password: { type: "string" },
+                  csrfToken: { type: "string" },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          "200": { description: "로그인 성공 — 세션 쿠키 설정 후 redirect 응답" },
+          "401": { description: "이메일/비밀번호 불일치 (CredentialsSignin 에러로 리다이렉트)" },
+        },
+      },
+    },
+    "/api/auth/signout": {
+      post: {
+        tags: ["인증"],
+        summary: "로그아웃 (NextAuth 표준 경로)",
+        description: "csrfToken 포함 POST 필요. NextAuth 내부 구현이라 스펙은 참고용.",
+        "x-status": "implemented",
+        security: [],
+        requestBody: {
+          required: true,
+          content: {
+            "application/x-www-form-urlencoded": {
+              schema: {
+                type: "object",
+                required: ["csrfToken"],
+                properties: { csrfToken: { type: "string" } },
+              },
+            },
+          },
+        },
+        responses: {
+          "200": { description: "세션 쿠키 삭제됨" },
+        },
+      },
+    },
     "/api/partners": {
       post: {
         tags: ["상대방"],
