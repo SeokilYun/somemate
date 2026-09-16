@@ -69,7 +69,13 @@ export const openApiDocument = {
         type: "apiKey",
         in: "cookie",
         name: "next-auth.session-token",
-        description: "NextAuth JWT 세션 쿠키. /api/users, /api/auth/* 제외 모든 엔드포인트에 필요.",
+        description: "웹 브라우저용 NextAuth JWT 세션 쿠키. /api/users, /api/auth/* 제외 모든 엔드포인트에 필요.",
+      },
+      bearerToken: {
+        type: "http",
+        scheme: "bearer",
+        bearerFormat: "JWT",
+        description: "네이티브 앱 전용. POST /api/auth/mobile-login으로 발급받은 액세스 토큰.",
       },
     },
     schemas: {
@@ -86,7 +92,7 @@ export const openApiDocument = {
       Message,
     },
   },
-  security: [{ sessionCookie: [] }],
+  security: [{ sessionCookie: [] }, { bearerToken: [] }],
   paths: {
     "/api/users": {
       post: {
@@ -145,6 +151,44 @@ export const openApiDocument = {
                 },
               },
             },
+          },
+        },
+      },
+    },
+    "/api/auth/mobile-login": {
+      post: {
+        tags: ["인증"],
+        summary: "네이티브 앱 로그인 (액세스 토큰 발급)",
+        description:
+          "웹의 쿠키 세션 대신, 네이티브 앱이 이후 요청에 Authorization: Bearer 헤더로 실어 보낼 " +
+          "stateless JWT를 발급한다. 앱은 이 토큰을 Keychain/Keystore에 저장한다.",
+        "x-status": "implemented",
+        security: [],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["email", "password"],
+                properties: { email: { type: "string" }, password: { type: "string" } },
+              },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "발급됨",
+            content: {
+              "application/json": {
+                schema: { type: "object", properties: { accessToken: { type: "string" } } },
+              },
+            },
+          },
+          "400": { description: "VALIDATION_ERROR", content: { "application/json": { schema: ErrorResponse } } },
+          "401": {
+            description: "INVALID_CREDENTIALS — 이메일/비밀번호 불일치",
+            content: { "application/json": { schema: ErrorResponse } },
           },
         },
       },

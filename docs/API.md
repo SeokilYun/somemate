@@ -2,7 +2,8 @@
 
 기본 규칙:
 - 모든 응답은 JSON. 에러는 `{ "error": { "code": string, "message": string } }` 형식, HTTP 상태코드 병행.
-- `POST /api/users`(회원가입), `/api/auth/*` 를 제외한 모든 엔드포인트는 세션 필요 → 미인증 시 `401 UNAUTHENTICATED`.
+- `POST /api/users`(회원가입), `/api/auth/*` 를 제외한 모든 엔드포인트는 인증 필요 → 미인증 시 `401 UNAUTHENTICATED`.
+- 인증은 두 가지 방식을 병행한다: 웹은 NextAuth 세션 쿠키(`next-auth.session-token`), 네이티브 앱은 `POST /api/auth/mobile-login`으로 발급받은 토큰을 `Authorization: Bearer {token}` 헤더로 전달. 서버는 둘 중 하나만 있으면 인증된 것으로 처리한다.
 - 소유권 검증: `Partner`/`Conversation`/`Message`/이미지 리소스는 요청자의 `userId`와 일치할 때만 조회·수정 가능 → 불일치 시 `404 NOT_FOUND`(존재 자체를 노출하지 않음).
 - 이미지 분석 및 캐릭터 응답 생성은 비전 지원 LLM API를 사용(제공사 미정). 어떤 제공사를 쓰든 서버에서만 키를 사용하고, 아래 스펙(요청/응답 형식)은 동일하게 유지한다.
 - Message `role`: `user | optimistic | cautious | realistic | system`
@@ -16,6 +17,14 @@
 - 201: `{ "id": string, "email": string }`
 - 400 `VALIDATION_ERROR`: 이메일 형식/비밀번호 길이 미달
 - 409 `EMAIL_TAKEN`: 이메일 중복
+
+### POST /api/auth/mobile-login
+네이티브 앱 전용 로그인. 쿠키가 아니라 stateless 액세스 토큰(JWT)을 발급하며, 앱은 이후 모든 요청에 `Authorization: Bearer {accessToken}` 헤더를 실어 보낸다.
+- Request: `{ "email": string, "password": string }`
+- 200: `{ "accessToken": string }` (유효기간 30일, refresh 없음 — 만료되면 재로그인)
+- 400 `VALIDATION_ERROR`: email/password 누락
+- 401 `INVALID_CREDENTIALS`: 이메일 또는 비밀번호 불일치
+- 로그아웃은 서버 상태가 없으므로 앱이 로컬에 저장한 토큰을 삭제하는 것으로 처리한다.
 
 ### /api/auth/[...nextauth]
 NextAuth Credentials Provider가 처리(프레임워크 표준 경로, REST 리소스 규칙 예외). 클라이언트는 보통 `signIn`/`signOut`/`useSession`(next-auth/react)으로 감싸 호출하면 되지만, 아래는 실제로 발생하는 하위 요청이다(NextAuth 내부 구현이라 스펙은 참고용, 언제든 바뀔 수 있음).
