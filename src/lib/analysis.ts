@@ -5,7 +5,7 @@ export class AnalysisNotConfiguredError extends Error {}
 export type CharacterAnalysisResult =
   | {
       needsClarification: false;
-      assistantMessages: Array<{ role: "optimistic" | "cautious" | "realistic"; content: string }>;
+      assistantMessages: Array<{ role: "positive" | "cautious" | "negative"; content: string }>;
     }
   | {
       needsClarification: true;

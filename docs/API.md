@@ -6,7 +6,7 @@
 - 인증은 두 가지 방식을 병행한다: 웹은 NextAuth 세션 쿠키(`next-auth.session-token`), 네이티브 앱은 `POST /api/auth/mobile-login`으로 발급받은 토큰을 `Authorization: Bearer {token}` 헤더로 전달. 서버는 둘 중 하나만 있으면 인증된 것으로 처리한다.
 - 소유권 검증: `Partner`/`Conversation`/`Message`/이미지 리소스는 요청자의 `userId`와 일치할 때만 조회·수정 가능 → 불일치 시 `404 NOT_FOUND`(존재 자체를 노출하지 않음).
 - 이미지 분석 및 캐릭터 응답 생성은 비전 지원 LLM API를 사용(제공사 미정). 어떤 제공사를 쓰든 서버에서만 키를 사용하고, 아래 스펙(요청/응답 형식)은 동일하게 유지한다.
-- Message `role`: `user | optimistic | cautious | realistic | system`
+- Message `role`: `user | positive | cautious | negative | system`
 - 리소스 컬렉션은 복수형 명사, 하위 리소스는 `/부모컬렉션/:id/자식컬렉션` 형태로 중첩한다.
 
 ## 1. 인증
@@ -82,9 +82,9 @@ Request: 위 필드 중 일부(부분 업데이트)
 {
   "conversation": { "id": "string", "partnerId": "string", "createdAt": "string" },
   "messages": [
-    { "id": "string", "role": "optimistic", "content": "왔구나! 어떤 이야기인지 궁금해 😊 같이 좋은 신호를 찾아보자.", "createdAt": "string" },
+    { "id": "string", "role": "positive", "content": "왔구나! 어떤 이야기인지 궁금해 😊 같이 좋은 신호를 찾아보자.", "createdAt": "string" },
     { "id": "string", "role": "cautious", "content": "반가워. 앞뒤 상황까지 차근차근 살펴볼게.", "createdAt": "string" },
-    { "id": "string", "role": "realistic", "content": "어서 와. 어떤 대화가 고민인지 보여줘. 같이 정리해보자.", "createdAt": "string" },
+    { "id": "string", "role": "negative", "content": "어서 와. 어떤 대화가 고민인지 보여줘. 같이 정리해보자.", "createdAt": "string" },
     { "id": "string", "role": "system", "content": "고민되는 대화 캡처를 올려줘. 어떤 부분이 신경 쓰이는지도 함께 알려주면 좋아.", "createdAt": "string" }
   ]
 }
@@ -116,9 +116,9 @@ Request: 위 필드 중 일부(부분 업데이트)
 {
   "userMessage": { "id": "string", "role": "user", "content": "string|null", "imageUrls": ["string"], "createdAt": "string" },
   "assistantMessages": [
-    { "id": "string", "role": "optimistic", "content": "string", "createdAt": "string" },
+    { "id": "string", "role": "positive", "content": "string", "createdAt": "string" },
     { "id": "string", "role": "cautious", "content": "string", "createdAt": "string" },
-    { "id": "string", "role": "realistic", "content": "string", "createdAt": "string" }
+    { "id": "string", "role": "negative", "content": "string", "createdAt": "string" }
   ],
   "needsClarification": false
 }
@@ -184,5 +184,5 @@ Request: 위 필드 중 일부(부분 업데이트)
 
 ```ts
 type Relationship = "some" | "dating" | "coworker" | "friend" | "parent" | "other";
-type MessageRole = "user" | "optimistic" | "cautious" | "realistic" | "system";
+type MessageRole = "user" | "positive" | "cautious" | "negative" | "system";
 ```

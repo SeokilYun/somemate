@@ -29,7 +29,7 @@ AGENTS.md 협업 원칙 "작게 연결하며 검증한다"의 순서를 C 관점
 | M2 | Partner 저장 | Partner 생성/수정 API, 소유권 검증 | ✅ 완료 (실서버 DB로 검증) |
 | M3 | Conversation/Message 저장 | 상담방 생성(+인사 메시지 저장은 B와 연결), 메시지 영속 저장, 재접속 시 히스토리 복원 | ✅ 완료 (저장/조회 구조, 실서버 DB로 검증. 이미지 분석 자체는 B 연동 대기 — 아래 참고) |
 | M4 | 이미지 저장 | 업로드/서빙 API, 사용자 경로 격리 + 소유자 검증 | ✅ 완료 (실서버 DB/파일시스템으로 검증) |
-| M5 | 후속 알림 | 구독 저장, 예약/취소, 24시간 디스패치 | ✅ 완료 (실서버 DB로 검증, 실제 발송은 cron 연결 필요) |
+| M5 | 후속 알림 | 구독 저장, 예약/취소, 24시간 디스패치 | ⚠️ 재작업 필요 (기획 변경: 3시간+24시간 2단계 발송으로 확정, AGENTS.md §5 참고 — 기존 구현은 단일 24시간 스케줄만 지원) |
 | M6 | 배포·운영 | 배포 파이프라인, 에러/비용 모니터링 | ⬜ 예정 |
 
 각 단계 끝에서 관련 담당(A/B)과 함께 실제로 눌러보고 연결 상태를 확인한다(AGENTS.md "매 작업일이 끝날 때 함께 실행").
@@ -58,7 +58,7 @@ AGENTS.md 협업 원칙 "작게 연결하며 검증한다"의 순서를 C 관점
 ### M3 — Conversation / Message
 - `POST /api/conversations`(생성), `GET /api/conversations`(목록), `GET /api/conversations/:id`(히스토리 복원)
 - `POST /api/conversations/:id/messages` 중 저장/조회 구조는 C, 분석 응답 생성 로직은 B — 인터페이스(요청/응답 스키마)는 docs/API.md 고정, B가 이 스키마에 맞춰 구현하도록 맞춤
-- 최초 진입 인사 메시지: `POST /api/conversations` 생성 시점에 긍정이(`optimistic`)→신중이(`cautious`)→부정이(`realistic`)→시스템 순으로 1회 저장(트랜잭션), 재진입은 `GET /api/conversations/:id`가 저장된 메시지를 그대로 복원하므로 중복 생성 자체가 없음
+- 최초 진입 인사 메시지: `POST /api/conversations` 생성 시점에 긍정이(`positive`)→신중이(`cautious`)→부정이(`negative`)→시스템 순으로 1회 저장(트랜잭션), 재진입은 `GET /api/conversations/:id`가 저장된 메시지를 그대로 복원하므로 중복 생성 자체가 없음
 - 재로그인/새로고침 후 메시지 순서·내용 복원 검증 완료(`createdAt asc, id asc` 정렬)
 - `src/lib/analysis.ts`에 `analyzeConversationImage()` 시그니처만 확정해두고 내부는 미구현(`AnalysisNotConfiguredError`) — LLM_API_KEY 없으면 라우트가 스펙대로 `502 ANALYSIS_FAILED` 반환, 사용자 메시지는 저장 유지. **B가 이 함수 내부만 실제 비전 LLM 호출로 교체하면 연동 끝나는 구조.**
 

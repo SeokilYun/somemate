@@ -52,14 +52,14 @@ Next.js 프로젝트 하나 안에서 App Router가 클라이언트와 서버(AP
 - DB: MySQL + Prisma (로컬은 Docker Compose로 MySQL 컨테이너 실행)
 - 이미지 저장: 로컬 `uploads/` (또는 `public/uploads`), 사용자 ID로 경로 격리, 소유자 검증 후 서빙
 - 이미지 분석 & 캐릭터 응답: 비전(vision) 지원 LLM API 호출 (제공사 미정) — API 키는 서버 환경 변수에서만 사용
-- 푸시: Web Push (VAPID) — 구독 정보 DB 저장, `web-push` 라이브러리로 발송, `/api/internal/followups/dispatch`로 24시간 후속 알림 트리거
+- 푸시: Web Push (VAPID) — 구독 정보 DB 저장, `web-push` 라이브러리로 발송, `/api/internal/followups/dispatch`로 3시간·24시간 2단계 후속 알림 트리거
 
 ## 데이터 모델 (Prisma 개요)
 
 - `User`: id, email, passwordHash, createdAt
 - `Partner`(상담 대상 정보): id, userId, name, age?, mbti?, interests(string[] 또는 JSON), relationship, relationshipCustom?
-- `Conversation`(상담방): id, userId, partnerId, createdAt, lastMessageAt, firstAnalysisAt?, followupScheduledAt?, followupSentAt?
-- `Message`: id, conversationId, role(user/optimistic/cautious/realistic/system), content, imageUrls?(string[], 최대 5장), createdAt
+- `Conversation`(상담방): id, userId, partnerId, createdAt, lastMessageAt, firstAnalysisAt?, followupFirstScheduledAt?, followupFirstSentAt?, followupSecondScheduledAt?, followupSecondSentAt?
+- `Message`: id, conversationId, role(user/positive/cautious/negative/system), content, imageUrls?(string[], 최대 5장), createdAt
 - `PushSubscription`: id, userId, endpoint, keys(JSON)
 
 모든 조회는 `userId` 기준으로 스코프 — 본인 소유가 아닌 `Conversation`/`Message`/이미지 파일에는 접근 불가하도록 서버에서 검증.
@@ -83,11 +83,11 @@ Next.js 프로젝트 하나 안에서 App Router가 클라이언트와 서버(AP
 
 | 캐릭터 | 이름 | 성별 | `Message.role` 값 | 대표 한마디 | 매치 이유 |
 | --- | --- | --- | --- | --- | --- |
-| 긍정이 | 김원일 | 남성 | `optimistic` | "좋은 신호가 있는지 같이 찾아보자!" | 소탈하고 친근한 느낌이라, 옆에서 "잘될 수도 있지!"라며 용기를 주는 다정한 친구와 잘 어울림. |
+| 긍정이 | 김원일 | 남성 | `positive` | "좋은 신호가 있는지 같이 찾아보자!" | 소탈하고 친근한 느낌이라, 옆에서 "잘될 수도 있지!"라며 용기를 주는 다정한 친구와 잘 어울림. |
 | 신중이 | 서윤지 | 여성 | `cautious` | "아직 모르는 부분도 있으니까, 천천히 보자." | 부드럽고 차분한 어감이 있어, 마음을 이해하면서 상황을 꼼꼼히 살펴주는 인물에 어울림. |
-| 부정이 | 한지효 | 여성 | `realistic` | "말과 행동을 기준으로 정리해줄게." | 또렷하고 야무진 인상을 의도함. "잠깐, 이건 짚고 가자"라며 필요한 말을 해주는 솔직한 친구에 어울림. |
+| 부정이 | 한지효 | 여성 | `negative` | "말과 행동을 기준으로 정리해줄게." | 또렷하고 야무진 인상을 의도함. "잠깐, 이건 짚고 가자"라며 필요한 말을 해주는 솔직한 친구에 어울림. |
 
-  - 캐릭터의 화면 표시명(긍정이/신중이/부정이)과 저장되는 `Message.role` 값(`optimistic`/`cautious`/`realistic`)은 다르다 — role 값은 기존 API·DB 스키마와의 호환을 위해 그대로 유지한다.
+  - 캐릭터의 화면 표시명(긍정이/신중이/부정이)과 `Message.role` 값(`positive`/`cautious`/`negative`)은 별개다 — role 값은 표시명의 영어 번역이며(긍정→positive, 신중→cautious, 부정→negative), 화면에는 표시명을 쓰고 role 값은 내부 저장/API용으로만 쓴다.
 - "세 친구 초대하고 시작하기" → Conversation 생성 후 채팅방으로 이동. MVP는 3명 전원 참여 고정.
 
 ### 4. 채팅방
@@ -97,13 +97,21 @@ Next.js 프로젝트 하나 안에서 App Router가 클라이언트와 서버(AP
 - 분석 결과: 긍정이→신중이→부정이 순서로 메시지 렌더링. 각 메시지는 (해석)+(근거로 삼은 표현/행동)+(다음에 해볼 행동)을 포함.
   - 규칙: 긍정이는 무조건 긍정 금지, 부정이는 공격적 어투 금지. 나이/MBTI는 보조 참고, 실제 대화 내용이 분석 중심. 속마음 단정·근거 없는 호감도 수치 금지. 텍스트를 읽기 어렵거나 화자 불분명 시 추측 금지, 사용자에게 확인 질문.
 - 후속 대화: 텍스트/새 이미지로 이어감, 캐릭터는 Partner 정보 + 이전 대화 맥락 반영.
+  - **재검토 규칙**: 캐릭터는 다음 경우에 기존 판단을 재검토한다.
+    1. 사용자가 기존 해석에 영향을 주는 새로운 상황이나 대화 내용을 제공한 경우.
+    2. 다른 캐릭터가 원문에서 놓친 근거를 제시하거나, 기존 주장과 대화 내용 사이의 모순을 지적한 경우.
+    3. 캡처의 화자, 문장, 시간 등을 잘못 읽은 사실이 확인된 경우.
+  - 재검토 결과에 따라 기존 판단을 유지·강화·완화·수정하거나 보류할 수 있다. 판단을 변경할 때는 어떤 정보 때문에 해석이 달라졌는지 짧게 설명한다.
+  - 사용자가 원하는 결론이나 다른 캐릭터의 동의 여부만을 이유로 판단을 바꾸지 않는다. 판단을 수정하더라도 캐릭터 고유의 말투와 중요하게 여기는 가치는 유지한다.
 
 ### 5. 후속 알림
 - 첫 분석 완료 시 "내일 이 이야기 다시 나눠볼까?" + 알림 신청 버튼 노출.
-- 신청 시 알림 권한 요청 → 24시간 뒤 1회 발송: "그 이야기, 어떻게 됐어? 이어서 이야기해볼까?"
-- 사용자가 예약 전에 해당 방에서 먼저 후속 대화를 시작하면 예약 취소.
-- 사용자가 직접 예약 취소 가능.
-- 알림 클릭 → 로그인 필요 시 로그인 후 해당 상담방으로 이동, 진입 시 "지난번 이야기, 그 뒤로 어떻게 됐어?" 안내.
+- 신청 시 알림 권한 요청 → **2단계 발송**, 둘 다 기준 시각은 "마지막 메시지(`lastMessageAt`) 시각"이며 서로 독립적으로 예약(하나가 실패/미발송이어도 다른 하나에 영향 없음):
+  - **1차**: 마지막 메시지 + **3시간** 뒤 1회 — "그 얘기 어떻게 됐어? 궁금해서 물어봤어!" (문구는 임시, A 확정 필요)
+  - **2차**: 마지막 메시지 + **24시간(1일)** 뒤 1회 — "그 이야기, 어떻게 됐어? 이어서 이야기해볼까?"
+- 사용자가 두 예약 시각 전에 해당 방에서 먼저 후속 대화를 시작하면 **아직 발송 안 된 예약을 전부** 취소.
+- 사용자가 직접 예약 취소 가능(1차/2차 둘 다, 또는 개별 취소 여부는 A 확정 필요).
+- 알림 클릭 → 로그인 필요 시 로그인 후 해당 상담방으로 이동, 진입 시 "지난번 이야기, 그 뒤로 어떻게 됐어?" 안내(1차/2차 공통).
 - 알림 미허용이어도 사용자가 직접 방에 들어가 대화 계속 가능.
 
 ## 디자인 톤
@@ -119,7 +127,7 @@ Next.js 프로젝트 하나 안에서 App Router가 클라이언트와 서버(AP
 ## 구현 범위 구분
 
 - **실제 동작**: 이메일/비밀번호 인증, 상담방/메시지 영속 저장(새로고침·재로그인 유지), 이미지 업로드+LLM 비전 분석, 캐릭터 3인 응답, Web Push(화면 닫아도 수신).
-- **환경 설정 필요**: `LLM_API_KEY`(제공사 선정 필요), VAPID 키 쌍(`VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`), 알림 발송 스케줄 실행 방식(로컬은 cron/서버 프로세스로 24h 지연 작업 처리 — 배포 환경에 맞는 스케줄러 확인 필요).
+- **환경 설정 필요**: `LLM_API_KEY`(제공사 선정 필요), VAPID 키 쌍(`VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`), 알림 발송 스케줄 실행 방식(로컬은 cron/서버 프로세스로 3h·24h 지연 작업 각각 처리 — 배포 환경에 맞는 스케줄러 확인 필요).
 - **데모 표시 필요**: 위 설정 없이 목업 데이터로 대체하는 화면이 있다면 화면 내 "데모" 배지로 명시하고, 타이머 기반 화면 내 알림을 실제 푸시로 오인시키지 않을 것.
 
 ## API 스펙

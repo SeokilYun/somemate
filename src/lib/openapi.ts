@@ -85,7 +85,7 @@ export const openApiDocument = {
       },
       MessageRole: {
         type: "string",
-        enum: ["user", "optimistic", "cautious", "realistic", "system"],
+        enum: ["user", "positive", "cautious", "negative", "system"],
       },
       Error: ErrorResponse,
       Partner,

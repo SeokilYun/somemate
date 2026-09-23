@@ -22,9 +22,9 @@ enum Relationship {
 
 enum MessageRole {
   user
-  optimistic
+  positive
   cautious
-  realistic
+  negative
   system
 }
 
