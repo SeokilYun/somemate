@@ -268,6 +268,38 @@ export const openApiDocument = {
         },
       },
     },
+    "/api/auth/providers": {
+      get: {
+        tags: ["인증"],
+        summary: "활성화된 로그인 provider 목록 (NextAuth 표준 경로)",
+        description:
+          "GOOGLE_CLIENT_ID/KAKAO_CLIENT_ID/APPLE_CLIENT_ID 등 환경변수가 없는 provider는 목록에서 빠진다. " +
+          "화면에서 소셜 로그인 버튼을 그릴 때 이 목록으로 노출 여부를 결정하면 된다.",
+        "x-status": "implemented",
+        security: [],
+        responses: {
+          "200": { description: "provider별 signinUrl/callbackUrl 반환" },
+        },
+      },
+    },
+    "/api/auth/signin/{provider}": {
+      get: {
+        tags: ["인증"],
+        summary: "소셜 로그인 시작 (구글/카카오/애플, NextAuth 표준 경로)",
+        description:
+          "브라우저를 이 URL로 이동시키면(또는 next-auth/react의 signIn(provider) 호출) 해당 provider의 " +
+          "인증 화면으로 리다이렉트된다. 승인 후 /api/auth/callback/{provider}로 돌아와 세션 쿠키가 발급된다. " +
+          "같은 이메일의 기존 계정이 있으면 자동으로 연결된다(src/lib/auth.ts의 signIn 콜백).",
+        "x-status": "implemented",
+        security: [],
+        parameters: [
+          { name: "provider", in: "path", required: true, schema: { type: "string", enum: ["google", "kakao", "apple"] } },
+        ],
+        responses: {
+          "302": { description: "provider 인증 화면으로 리다이렉트" },
+        },
+      },
+    },
     "/api/partners": {
       post: {
         tags: ["상대방"],

@@ -49,6 +49,7 @@ AGENTS.md 협업 원칙 "작게 연결하며 검증한다"의 순서를 C 관점
 - NextAuth Credentials Provider 설정, JWT 세션
 - 세션 헬퍼(서버 컴포넌트/API 라우트에서 `userId` 꺼내는 공통 함수) — 이후 모든 API가 이 헬퍼로 소유권 검증
 - A가 만들 로그인 화면과 연결 테스트
+- **(추가) 소셜 로그인**: Google/Kakao/Apple 3개 provider 추가(`src/lib/auth.ts`). PrismaAdapter 없이 이메일 기준 수동 계정 연결 — 새 `Account` 테이블. env var 없는 provider는 자동 비활성화(에러 없이 `/api/auth/providers`에서 빠짐). 실제 로그인 테스트는 각 provider에 실제 앱 등록 후 가능(외부 요소, 아래 5번 참고) — 지금은 fake 값으로 리다이렉트 URL 생성까지만 검증 완료.
 
 ### M2 — Partner
 - `POST /api/partners`, `PATCH /api/partners/:partnerId`
@@ -96,8 +97,13 @@ AGENTS.md "구현 범위 구분"의 환경 설정 필요 항목 중 C가 값을 
 - `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY`: `web-push generate-vapid-keys`로 생성 — 로컬 개발용은 생성해서 검증 완료, **배포용은 별도로 새로 발급해 서버 환경변수에 등록해야 함**(로컬 키를 프로덕션에 재사용하지 않기)
 - 알림 발송 스케줄러: `scripts/dispatch-followups.sh` 작성 완료, 로컬은 cron으로 검증 가능 — 배포 환경(예: Vercel이면 Vercel Cron)에 맞는 실제 등록은 M6에서 배포 대상 확정 후 진행
 - `CRON_SECRET`: 임의 값 생성, 배포 환경 변수에 등록(로컬은 생성해 테스트 완료)
+- **소셜 로그인 앱 등록** (내가 대신 만들 수 없음, 팀이 직접 해야 함):
+  - Google: Cloud Console에서 OAuth 클라이언트 ID 발급 → `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`
+  - Kakao: Kakao Developers에서 앱 생성 + 카카오 로그인 활성화 → `KAKAO_CLIENT_ID`/`KAKAO_CLIENT_SECRET`(이메일 동의항목은 비즈니스 심사 필요할 수 있음)
+  - Apple: **유료 Apple Developer 계정 필요** — Sign in with Apple용 Service ID + Key(.p8) 발급 → `APPLE_CLIENT_ID`/`APPLE_TEAM_ID`/`APPLE_KEY_ID`/`APPLE_PRIVATE_KEY`
+  - 셋 다 콜백 URL(`{NEXTAUTH_URL}/api/auth/callback/{provider}`)을 배포 도메인 확정 후 각 콘솔에 정확히 등록해야 함 — 로컬(`localhost:3000`)과 배포 도메인 둘 다 등록 가능(대부분의 provider가 여러 redirect URI 등록 지원)
 
-값이 없는 동안 알림 발송 화면/기능은 AGENTS.md 규칙대로 "데모" 배지로 명시.
+값이 없는 동안 알림 발송 화면/기능은 AGENTS.md 규칙대로 "데모" 배지로 명시. 소셜 로그인도 마찬가지로, 미설정 provider는 화면에서 버튼 자체를 숨기면 되고(에러 아님) A가 `/api/auth/providers` 목록 기준으로 처리하면 됨.
 
 ## 6. A/B와 맞출 인터페이스
 

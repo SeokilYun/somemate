@@ -31,14 +31,38 @@ enum MessageRole {
 model User {
   id           String   @id @default(cuid())
   email        String   @unique
-  passwordHash String
+  // 소셜 로그인 전용 계정은 비밀번호가 없다 — 이메일/비밀번호 가입 사용자만 값이 채워진다.
+  passwordHash String?
   createdAt    DateTime @default(now())
 
   partners          Partner[]
   conversations     Conversation[]
   pushSubscriptions PushSubscription[]
+  accounts          Account[]
 
   @@map("users")
+}
+
+/** 소셜 로그인(구글/카카오/애플) 연결 정보. NextAuth 표준 스키마를 참고하되, 이 프로젝트는
+ * PrismaAdapter 없이 src/lib/auth.ts의 signIn 콜백에서 직접 조회/생성한다(세션은 JWT 전략 사용). */
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+  @@map("accounts")
 }
 
 model Partner {

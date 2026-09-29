@@ -14,7 +14,7 @@ Next.js 프로젝트 하나(App Router)에서 클라이언트와 서버(API Rout
 - Service Worker (Web Push 구독/수신)
 
 **서버 (API Routes)**
-- NextAuth (Credentials Provider)
+- NextAuth (Credentials Provider + Google/Kakao/Apple 소셜 로그인)
 - Prisma + MySQL
 - 비전(vision) 지원 LLM API (이미지 분석 및 캐릭터 응답 생성, 제공사 미정, 서버에서만 호출)
 - Web Push (VAPID) 발송
@@ -48,6 +48,10 @@ npm run dev
 | `DATABASE_URL` | Prisma용 MySQL 접속 문자열 (예: `mysql://user:password@서버주소:3306/somemate`, 서버에 직접 구성된 MySQL 인스턴스) |
 | `NEXTAUTH_SECRET` | NextAuth 세션 암호화 시크릿 |
 | `NEXTAUTH_URL` | NextAuth 콜백 기준 URL (로컬: `http://localhost:3000`) |
+| `MOBILE_JWT_SECRET` | 네이티브 앱 전용 액세스 토큰(Bearer) 서명 시크릿, `NEXTAUTH_SECRET`과 별개 |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | (선택) 구글 로그인. 값 없으면 해당 provider 비활성화. 자세한 내용은 `.env.example` 참고 |
+| `KAKAO_CLIENT_ID` / `KAKAO_CLIENT_SECRET` | (선택) 카카오 로그인. 이메일 스코프 미승인 시 임시 이메일로 계정 생성됨 |
+| `APPLE_CLIENT_ID` / `APPLE_TEAM_ID` / `APPLE_KEY_ID` / `APPLE_PRIVATE_KEY` | (선택) Apple 로그인, 유료 개발자 계정 필요 |
 | `LLM_API_KEY` | 이미지 분석 및 캐릭터 응답 생성에 사용하는 비전 지원 LLM API 키 (제공사 미정, 서버 전용, 클라이언트 노출 금지) |
 | `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` | Web Push 발송용 키 쌍 (생성: `npx web-push generate-vapid-keys`) |
 | `VAPID_SUBJECT` | (선택) Web Push 발신자 식별자, 예: `mailto:you@example.com`. 미설정 시 기본값 사용 |

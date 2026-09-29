@@ -48,7 +48,7 @@ Next.js 프로젝트 하나 안에서 App Router가 클라이언트와 서버(AP
 
 ### 서버 (API Routes / 서버 컴포넌트)
 
-- 인증: NextAuth Credentials Provider + bcrypt 해시, JWT 세션
+- 인증: NextAuth Credentials Provider(bcrypt 해시) + Google/Kakao/Apple 소셜 로그인, JWT 세션. 소셜 로그인은 PrismaAdapter 없이 이메일 기준 수동 연결(src/lib/auth.ts)
 - DB: MySQL + Prisma (로컬은 Docker Compose로 MySQL 컨테이너 실행)
 - 이미지 저장: 로컬 `uploads/` (또는 `public/uploads`), 사용자 ID로 경로 격리, 소유자 검증 후 서빙
 - 이미지 분석 & 캐릭터 응답: 비전(vision) 지원 LLM API 호출 (제공사 미정) — API 키는 서버 환경 변수에서만 사용
@@ -56,7 +56,8 @@ Next.js 프로젝트 하나 안에서 App Router가 클라이언트와 서버(AP
 
 ## 데이터 모델 (Prisma 개요)
 
-- `User`: id, email, passwordHash, createdAt
+- `User`: id, email, passwordHash?(소셜 로그인 전용 계정은 없음), createdAt
+- `Account`(소셜 로그인 연결 정보): id, userId, type, provider(google/kakao/apple), providerAccountId, 그 외 OAuth 토큰 필드
 - `Partner`(상담 대상 정보): id, userId, name, age?, mbti?, interests(string[] 또는 JSON), relationship, relationshipCustom?
 - `Conversation`(상담방): id, userId, partnerId, createdAt, lastMessageAt, firstAnalysisAt?, followupFirstScheduledAt?, followupFirstSentAt?, followupSecondScheduledAt?, followupSecondSentAt?
 - `Message`: id, conversationId, role(user/positive/cautious/negative/system), content, imageUrls?(string[], 최대 5장), createdAt
@@ -68,6 +69,9 @@ Next.js 프로젝트 하나 안에서 App Router가 클라이언트와 서버(AP
 
 ### 1. 인증
 - 이메일/비밀번호 회원가입·로그인, 세션 유지, 로그아웃.
+- 소셜 로그인(구글/카카오/애플): 버튼 클릭 시 각 provider 인증 화면으로 이동 후 콜백으로 복귀, 별도 회원가입 절차 없이 즉시 로그인.
+  - 같은 이메일로 이미 이메일/비밀번호 계정이 있으면 자동으로 같은 계정에 연결된다(계정 연결 확인 화면 없음, provider가 이메일을 자체 검증한다는 전제).
+  - 카카오는 이메일 동의항목이 비즈니스 앱 심사 전까지 비활성화될 수 있음 — 이 경우 실제 이메일 없이 임시 식별자로 가입 처리됨(사용자에게 별도 안내 필요 여부는 A 확정 필요).
 - 폼 검증 에러, 로그인 실패, 로딩 상태 UI 처리.
 
 ### 2. 메인페이지
@@ -127,7 +131,7 @@ Next.js 프로젝트 하나 안에서 App Router가 클라이언트와 서버(AP
 ## 구현 범위 구분
 
 - **실제 동작**: 이메일/비밀번호 인증, 상담방/메시지 영속 저장(새로고침·재로그인 유지), 이미지 업로드+LLM 비전 분석, 캐릭터 3인 응답, Web Push(화면 닫아도 수신).
-- **환경 설정 필요**: `LLM_API_KEY`(제공사 선정 필요), VAPID 키 쌍(`VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`), 알림 발송 스케줄 실행 방식(로컬은 cron/서버 프로세스로 3h·24h 지연 작업 각각 처리 — 배포 환경에 맞는 스케줄러 확인 필요).
+- **환경 설정 필요**: `LLM_API_KEY`(제공사 선정 필요), VAPID 키 쌍(`VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`), 알림 발송 스케줄 실행 방식(로컬은 cron/서버 프로세스로 3h·24h 지연 작업 각각 처리 — 배포 환경에 맞는 스케줄러 확인 필요), 소셜 로그인 앱 등록(구글 Cloud Console, 카카오 디벨로퍼스, 애플 개발자 프로그램 — Apple은 유료 계정 필요) 및 각 콜백 URL(`{NEXTAUTH_URL}/api/auth/callback/{google|kakao|apple}`) 등록. 값이 없는 provider는 자동 비활성화되며 이메일/비밀번호 로그인만으로도 서비스 이용 가능.
 - **데모 표시 필요**: 위 설정 없이 목업 데이터로 대체하는 화면이 있다면 화면 내 "데모" 배지로 명시하고, 타이머 기반 화면 내 알림을 실제 푸시로 오인시키지 않을 것.
 
 ## API 스펙

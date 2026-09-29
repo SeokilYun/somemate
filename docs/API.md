@@ -27,11 +27,14 @@
 - 로그아웃은 서버 상태가 없으므로 앱이 로컬에 저장한 토큰을 삭제하는 것으로 처리한다.
 
 ### /api/auth/[...nextauth]
-NextAuth Credentials Provider가 처리(프레임워크 표준 경로, REST 리소스 규칙 예외). 클라이언트는 보통 `signIn`/`signOut`/`useSession`(next-auth/react)으로 감싸 호출하면 되지만, 아래는 실제로 발생하는 하위 요청이다(NextAuth 내부 구현이라 스펙은 참고용, 언제든 바뀔 수 있음).
+NextAuth가 처리(프레임워크 표준 경로, REST 리소스 규칙 예외). 클라이언트는 보통 `signIn`/`signOut`/`useSession`(next-auth/react)으로 감싸 호출하면 되지만, 아래는 실제로 발생하는 하위 요청이다(NextAuth 내부 구현이라 스펙은 참고용, 언제든 바뀔 수 있음).
 - `GET /api/auth/csrf` → `{ "csrfToken": string }` — 로그인/로그아웃 POST 전에 먼저 호출해 토큰을 받아야 함
 - `POST /api/auth/callback/credentials` (`application/x-www-form-urlencoded`, `{ email, password, csrfToken }`) — 로그인: NextAuth `signIn("credentials", { email, password })` → 실패 시 `CredentialsSignin` 에러를 클라이언트에서 매핑해 "이메일 또는 비밀번호가 올바르지 않습니다" 표시.
 - `POST /api/auth/signout` (`{ csrfToken }`) — 로그아웃: `signOut()`, 세션 쿠키 삭제
 - `GET /api/auth/session` → `{ user: { id, email } } | {}` — 세션 조회
+- **소셜 로그인** (`GET /api/auth/signin/{google|kakao|apple}` → provider 인증 화면으로 리다이렉트 → `GET|POST /api/auth/callback/{provider}` → 성공 시 세션 쿠키 발급 후 앱으로 리다이렉트): 클라이언트는 `signIn("google" | "kakao" | "apple")` 호출만 하면 되고 나머지는 NextAuth가 처리한다. 서버 환경변수(`GOOGLE_CLIENT_ID`/`KAKAO_CLIENT_ID`/`APPLE_CLIENT_ID` 등)가 없는 provider는 `/api/auth/providers` 목록에서 빠지며 로그인 시도 시 에러가 아니라 그냥 버튼을 노출하지 않아야 한다(A 화면 구현 참고).
+  - 이메일이 기존 계정과 같으면 자동으로 그 계정에 연결(같은 `User.id`, 세션 응답 형태 동일).
+  - 카카오는 이메일 동의 미승인 시 `kakao_{id}@kakao.somemate.local` 형태 임시 이메일로 계정 생성됨.
 
 ## 2. 상대방 정보 (Partner)
 
