@@ -82,6 +82,7 @@ AGENTS.md 협업 원칙 "작게 연결하며 검증한다"의 순서를 C 관점
 - 에러 로깅(최소 서버 로그 또는 외부 서비스) 확인 체계
 - LLM API 비용/사용량 확인 방법(B와 협의해 로그에 토큰/호출 수 남기기)
 - 배포 후 실제 환경에서 M1~M5 체크리스트 재확인
+- **도메인 + HTTPS 설정** (의도적으로 보류 중, 결정 필요): 자체 서버로 갈 경우 도메인 구매 + 인증서 발급(nginx 리버스 프록시 + Let's Encrypt 등)이 필요. Google/Apple 소셜 로그인은 `localhost` 제외 HTTP 리다이렉트를 안 받아줘서, 이 작업 전까지는 Kakao 로그인만 지금 테스트 서버(HTTP)에서 확인 가능하고 Google/Apple은 도메인+HTTPS 붙인 뒤에 검증해야 함
 
 ### 부가 — API 문서(Swagger UI)
 - `/api-docs`에서 Swagger UI로 docs/API.md 전체 스펙 확인 가능(구현/계획 엔드포인트 모두 표시, `x-status` 필드로 구분)
